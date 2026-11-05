@@ -1,0 +1,12 @@
+{
+  "name": "tufotoenfoco-netlify-functions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Funciones de procesamiento de imágenes para TuFotoEnFoco",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "sharp": "^0.34.3"
+  }
+}
