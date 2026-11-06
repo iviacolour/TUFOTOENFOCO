@@ -246,9 +246,9 @@
         
         <section class="relative bg-black overflow-hidden border-b border-zinc-800 min-h-[calc(100vh-96px)] flex">
             <div class="absolute inset-0">
-                <img id="img-hero-fondo" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" class="w-full h-full object-cover opacity-70 transition-opacity duration-1000">
-                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950/75 via-black/30 to-transparent"></div>
-                <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent"></div>
+                <img id="img-hero-fondo" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" class="w-full h-full object-cover opacity-60 transition-opacity duration-1000">
+                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-black/50 to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
             </div>
             <div class="relative max-w-[95%] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-12 md:pt-24 flex flex-col items-start justify-start">
                 <div class="flex items-center gap-4 mb-6 mt-4">
@@ -686,16 +686,17 @@
 
         let eventoModalActual = null;
         let urlCompraActual = '';
-        async function fetchFotosDesdeGitHub(idEvento) {
-            const apiUrl = `https://api.github.com/repos/JGFoto/jgfoto/contents/galerias/${encodeURIComponent(idEvento)}`;
+        async function fetchFotosDesdeBackblaze(idEvento) {
             try {
-                const response = await fetch(apiUrl, {cache:'force-cache'});
-                if(!response.ok) return [];
-                const files = await response.json();
-                return files.filter(f=>/\.(jpg|jpeg|png|webp)$/i.test(f.name))
-                    .sort((x,y)=>Number((x.name.match(/_(\d+)\./)||[])[1]||0)-Number((y.name.match(/_(\d+)\./)||[])[1]||0))
-                    .map(f=>f.download_url);
-            } catch(e) { return []; }
+                const url = `${APPS_SCRIPT_URL}?action=photos&folder=${encodeURIComponent(idEvento)}&_=${Date.now()}`;
+                const response = await fetch(url, { cache: 'no-store' });
+                if (!response.ok) return [];
+                const data = await response.json();
+                return Array.isArray(data.photos) ? data.photos : [];
+            } catch (e) {
+                console.error('No se pudieron cargar las fotografías desde Backblaze:', e);
+                return [];
+            }
         }
         function obtenerNumerosDestacados(ev) {
             return String(ev.Fotos_Destacadas ?? ev.Fotos_destacadas ?? ev['Fotos destacadas'] ?? '')
@@ -722,9 +723,9 @@
             arrayFotosActuales=[];indexFotoActual=0;
             document.getElementById('modal-gal-thumbs-container').innerHTML='';
             const id=ev.ID_Evento||ev.ID_evento||ev.ID||'';
-            const photos=await fetchFotosDesdeGitHub(id);
+            const photos=await fetchFotosDesdeBackblaze(id);
             const nums=obtenerNumerosDestacados(ev);
-            const photoNum=u=>Number(((u.split('/').pop()||'').match(/_(\d+)\./)||[])[1]||0);
+            const photoNum=u=>Number(((u.split('/').pop()||'').match(/(\d+)(?=\.[^.]+$)/)||[])[1]||0);
             const featured=nums.map(n=>photos.find(u=>photoNum(u)===n)).filter(Boolean);
             const featuredSet=new Set(featured);
             arrayFotosActuales=[...featured,...photos.filter(u=>!featuredSet.has(u))];
@@ -936,7 +937,7 @@
                 const imgFondoPortada = document.getElementById('img-hero-fondo');
                 if(imgFondoPortada && data.imgPortada && String(data.imgPortada).trim() !== '') {
                     imgFondoPortada.src = data.imgPortada;
-                    imgFondoPortada.className = "w-full h-full object-cover opacity-70 transition-opacity duration-1000";
+                    imgFondoPortada.className = "w-full h-full object-cover opacity-60 transition-opacity duration-1000";
                 }
 
                 window.categoriasDisponibles = data.categorias || [];
@@ -1061,7 +1062,7 @@
             const ev=gals.find(g=>String(g.ID_Evento)===id);
             if(!ev){root.innerHTML='<section class="max-w-5xl mx-auto px-6 py-24 text-center"><h1 class="text-3xl font-bold text-white">Álbum no encontrado</h1><a href="galerias.html?tipo=categorias" class="inline-block mt-6 text-brand-accent">Volver a categorías</a></section>';return;}
             const cat=categoriaEfectiva(ev);const categoryHref=['sin balón','sin balon'].includes(normalizarCategoria(cat))?'sin-balon.html':normalizarCategoria(cat)==='cultura'?'cultura.html':'categoria.html?cat='+encodeURIComponent(cat);
-            const photos=await fetchFotosDesdeGitHub(id);const all=photos.length?photos:(ev.Foto_Cabecera?[ev.Foto_Cabecera]:[]);const total=Number(ev.Total_Fotos)||all.length||0;let page=0,selected=0;const perPage=16;
+            const photos=await fetchFotosDesdeBackblaze(id);const all=photos.length?photos:(ev.Foto_Cabecera?[ev.Foto_Cabecera]:[]);const total=Number(ev.Total_Fotos)||all.length||0;let page=0,selected=0;const perPage=16;
             const same=gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const idx=same.findIndex(g=>String(g.ID_Evento)===id);const next=same[idx+1];
             root.innerHTML=`<section class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen"><nav class="text-sm text-gray-400 mb-5"><a href="galerias.html?tipo=categorias" class="hover:text-brand-accent">Categorías</a><span class="mx-2">/</span><a href="${categoryHref}" class="hover:text-brand-accent">${cat}</a></nav><h1 class="text-3xl md:text-5xl font-black text-white">${ev.Titulo||''}</h1><div class="text-gray-400 mt-3 flex flex-wrap gap-x-4 gap-y-1"><span>${ev.Fecha||''}</span><span>${ev.Lugar||''}</span><span>${total} fotografías</span></div><p class="text-gray-300 text-base md:text-lg leading-relaxed mt-5 max-w-5xl">${ev.Resultados||ev.Descripcion_Larga||''}</p><div class="mt-8 bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[65vh]"><img id="album-main-photo" src="${all[0]||svgCamara}" alt="${ev.Titulo||'Fotografía del álbum'}" class="max-w-full max-h-[75vh] object-contain"></div><div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-zinc-800 py-4"><p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos.</p>${/^https?:\/\//i.test(String(ev.Link_Compra||''))?`<a href="${ev.Link_Compra}" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white">Tu recuerdo sin logo · descárgalo aquí</a>`:''}</div><div class="flex flex-wrap items-center justify-between gap-3 mt-7"><p id="album-counter" class="text-sm text-gray-300 font-semibold">${Math.min(perPage,total)} de ${total} archivos</p><div class="flex gap-2"><button id="album-prev" class="px-5 py-2 rounded-md border border-zinc-700 text-white disabled:opacity-30">Atrás</button><button id="album-next" class="px-5 py-2 rounded-md bg-brand-accent text-black font-bold disabled:opacity-30">Siguiente</button></div></div><div id="album-thumbs" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5"></div><div class="flex flex-wrap justify-between gap-3 mt-10 border-t border-zinc-800 pt-6"><a href="${categoryHref}" class="px-5 py-3 border border-zinc-700 rounded-md text-white hover:border-brand-accent">Volver a la categoría</a>${next?`<a href="album.html?id=${encodeURIComponent(next.ID_Evento)}" class="px-5 py-3 bg-brand-accent text-black font-bold rounded-md">Siguiente evento</a>`:'<span></span>'}</div></section>`;
             const draw=()=>{const start=page*perPage,end=Math.min(start+perPage,all.length);document.getElementById('album-counter').textContent=`${Math.min((page+1)*perPage,total)} de ${total} archivos`;document.getElementById('album-thumbs').innerHTML=all.slice(start,end).map((url,i)=>`<button type="button" class="aspect-square rounded-lg overflow-hidden border-2 ${start+i===selected?'border-brand-accent':'border-transparent'}" data-photo="${start+i}"><img src="${url}" loading="lazy" class="w-full h-full object-cover"></button>`).join('');document.getElementById('album-prev').disabled=page===0;document.getElementById('album-next').disabled=end>=all.length;document.querySelectorAll('#album-thumbs button').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.photo);document.getElementById('album-main-photo').src=all[selected];draw();}));};
