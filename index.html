@@ -430,7 +430,6 @@
             <div class="flex flex-col lg:flex-row flex-grow min-h-0 bg-brand-base relative">
                 <div class="flex-grow relative flex items-center justify-center bg-brand-base overflow-hidden group">
                     <img id="modal-gal-img-principal" src="" class="w-full h-full object-contain relative z-10 select-none transition-opacity duration-300">
-                    <img id="modal-gal-watermark" src="assets/marcatufotoenfoco.png" alt="" aria-hidden="true" class="hidden pointer-events-none absolute z-20 w-[72%] max-h-[55%] object-contain opacity-30 select-none">
                     <button id="modal-gal-prev" class="absolute left-4 z-50 bg-black/60 border-2 border-brand-accent text-brand-accent p-2 md:p-3 rounded-full hover:bg-brand-accent hover:text-black transition-all focus:outline-none opacity-0 group-hover:opacity-100 hidden md:block">
                         <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15.75 19.5L8.25 12l7.5-7.5"></path></svg>
                     </button>
@@ -716,7 +715,6 @@
             document.getElementById('modal-btn-comprar').classList.add('hidden');
             const topBuy=document.getElementById('modal-btn-comprar-top');
             topBuy.classList.toggle('hidden',!hasLink); if(hasLink)topBuy.href=urlCompraActual;
-            const watermark=document.getElementById('modal-gal-watermark'); if(watermark)watermark.classList.toggle('hidden',!hasLink);
             toggleModal(document.getElementById('modal-galeria-vista'),true);
             const main=document.getElementById('modal-gal-img-principal');
             main.src=svgCamara; main.alt='Cargando fotografía';

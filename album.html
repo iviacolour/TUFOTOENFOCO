@@ -1012,7 +1012,7 @@
                 <div>
                   <div class="relative bg-black rounded-xl overflow-hidden min-h-[300px] md:min-h-[65vh] flex items-center justify-center border border-zinc-800 shadow-none">
                     <img id="album-main-photo" src="${all[0]}" alt="${safe(ev.Titulo||'Fotografía del álbum')}" class="max-w-full max-h-[78vh] object-contain cursor-pointer transition-opacity duration-500" title="Pulsa para ver los datos de esta fotografía">
-                    ${/^https?:\/\//i.test(linkCompra)?'<img src="assets/marcatufotoenfoco.png" alt="" aria-hidden="true" class="pointer-events-none absolute z-20 w-[72%] max-h-[55%] object-contain opacity-30 select-none">':''}
+                    
                     <button id="album-photo-prev" type="button" aria-label="Fotografía anterior" class="hidden absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 border border-white/30 text-white rounded-full w-12 h-12 text-2xl hover:bg-brand-accent hover:text-black">‹</button>
                     <button id="album-photo-next" type="button" aria-label="Fotografía siguiente" class="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 border border-white/30 text-white rounded-full w-12 h-12 text-2xl hover:bg-brand-accent hover:text-black">›</button>
                   </div>
@@ -1034,7 +1034,7 @@
                 <div class="flex items-center justify-between px-5 py-4 border-b border-zinc-800"><div><p class="text-brand-accent text-xs uppercase tracking-[.2em] font-bold">Presentación del álbum</p><p id="player-position" class="text-gray-400 text-xs mt-1"></p></div><button id="player-close" class="px-4 py-2 border border-zinc-700 rounded-lg text-white hover:border-brand-accent">Cerrar ×</button></div>
                 <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-4 p-4">
                   <div class="relative flex items-center justify-center min-h-0 bg-black rounded-xl overflow-hidden"><img id="player-photo" src="" class="max-w-full max-h-full object-contain opacity-100 transition-opacity duration-700">
-                    ${/^https?:\/\//i.test(linkCompra)?'<img src="assets/marcatufotoenfoco.png" alt="" aria-hidden="true" class="pointer-events-none absolute z-20 w-[72%] max-h-[55%] object-contain opacity-30 select-none">':''}<button id="player-prev" class="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/70 border border-white/30 text-white w-11 h-11 text-2xl">‹</button><button id="player-next" class="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/70 border border-white/30 text-white w-11 h-11 text-2xl">›</button></div>
+                    <button id="player-prev" class="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/70 border border-white/30 text-white w-11 h-11 text-2xl">‹</button><button id="player-next" class="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/70 border border-white/30 text-white w-11 h-11 text-2xl">›</button></div>
                   <aside id="player-info" class="flex flex-col justify-center"></aside>
                 </div>
                 <div class="px-5 py-3 border-t border-zinc-800 flex justify-center"><button id="player-pause" class="px-6 py-2 bg-brand-accent text-black rounded-lg font-bold text-xs uppercase tracking-wider">Ⅱ Pausar</button></div>
