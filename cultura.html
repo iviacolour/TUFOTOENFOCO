@@ -714,7 +714,7 @@
         }
         async function descargarFotoSeleccionada(){
             const url=arrayFotosActuales[indexFotoActual];if(!url)return;
-            try{const r=await fetch(url);if(!r.ok)throw Error('download');const blob=await r.blob(),obj=URL.createObjectURL(blob),a=document.createElement('a');a.href=obj;a.download=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}.jpg`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(obj),1500);}
+            try{const r=await fetch(url);if(!r.ok)throw Error('download');const blob=await r.blob(),obj=URL.createObjectURL(blob),a=document.createElement('a');a.href=obj;const extension=(new URL(url).pathname.match(/\.([^.\/]+)$/)||[])[1]||'jpg';a.download=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}.${extension}`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(obj),1500);}
             catch(e){window.open(url,'_blank','noopener');}
         }
 
