@@ -202,52 +202,62 @@
 }
 .caricature-trigger-intro .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpCard 3s cubic-bezier(.22,.72,.2,1) both;
+  animation: caricatureSpringUpCard 3.8s cubic-bezier(.18,.88,.24,1) both;
 }
 #main-footer .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpFooter 3s cubic-bezier(.22,.72,.2,1) both;
+  animation: caricatureSpringUpFooter 3.8s cubic-bezier(.18,.88,.24,1) both;
 }
 .caricature-trigger-intro .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownCard 1.5s cubic-bezier(.55,.05,.8,.35) both;
+  animation: caricatureSpringDownCard 2s cubic-bezier(.5,0,.75,.25) both;
 }
 #main-footer .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownFooter 1.5s cubic-bezier(.55,.05,.8,.35) both;
+  animation: caricatureSpringDownFooter 2s cubic-bezier(.5,0,.75,.25) both;
 }
 /* Sale lentamente desde dentro del elemento, desacelera y rebota suavemente. */
 @keyframes caricatureSpringUpCard {
-  0%   {opacity:0; transform:translateY(115%) scale(.91)}
-  22%  {opacity:0; transform:translateY(92%) scale(.93)}
-  42%  {opacity:.18; transform:translateY(58%) scale(.96)}
-  61%  {opacity:.62; transform:translateY(22%) scale(1.015)}
-  75%  {opacity:.92; transform:translateY(-3%) scale(1.025)}
-  84%  {opacity:1; transform:translateY(11%) scale(.99)}
-  92%  {opacity:1; transform:translateY(2%) scale(1.008)}
-  97%  {opacity:1; transform:translateY(7%) scale(.998)}
+  0%   {opacity:0; transform:translateY(118%) scale(.78)}
+  12%  {opacity:.04; transform:translateY(105%) scale(.82)}
+  28%  {opacity:.28; transform:translateY(62%) scale(.91)}
+  43%  {opacity:.72; transform:translateY(16%) scale(1.02)}
+  54%  {opacity:1; transform:translateY(-13%) scale(1.10)}
+  64%  {opacity:1; transform:translateY(8%) scale(.96)}
+  73%  {opacity:1; transform:translateY(-7%) scale(1.055)}
+  82%  {opacity:1; transform:translateY(5%) scale(.985)}
+  90%  {opacity:1; transform:translateY(-2.5%) scale(1.025)}
+  96%  {opacity:1; transform:translateY(1.5%) scale(.995)}
   100% {opacity:1; transform:translateY(5%) scale(1)}
 }
 @keyframes caricatureSpringUpFooter {
-  0%   {opacity:0; transform:translate(-50%,115%) scale(.91)}
-  22%  {opacity:0; transform:translate(-50%,92%) scale(.93)}
-  42%  {opacity:.18; transform:translate(-50%,58%) scale(.96)}
-  61%  {opacity:.62; transform:translate(-50%,22%) scale(1.015)}
-  75%  {opacity:.92; transform:translate(-50%,-3%) scale(1.025)}
-  84%  {opacity:1; transform:translate(-50%,11%) scale(.99)}
-  92%  {opacity:1; transform:translate(-50%,2%) scale(1.008)}
-  97%  {opacity:1; transform:translate(-50%,7%) scale(.998)}
+  0%   {opacity:0; transform:translate(-50%,118%) scale(.78)}
+  12%  {opacity:.04; transform:translate(-50%,105%) scale(.82)}
+  28%  {opacity:.28; transform:translate(-50%,62%) scale(.91)}
+  43%  {opacity:.72; transform:translate(-50%,16%) scale(1.02)}
+  54%  {opacity:1; transform:translate(-50%,-13%) scale(1.10)}
+  64%  {opacity:1; transform:translate(-50%,8%) scale(.96)}
+  73%  {opacity:1; transform:translate(-50%,-7%) scale(1.055)}
+  82%  {opacity:1; transform:translate(-50%,5%) scale(.985)}
+  90%  {opacity:1; transform:translate(-50%,-2.5%) scale(1.025)}
+  96%  {opacity:1; transform:translate(-50%,1.5%) scale(.995)}
   100% {opacity:1; transform:translate(-50%,5%) scale(1)}
 }
 @keyframes caricatureSpringDownCard {
   0% {opacity:1;transform:translateY(5%) scale(1)}
-  25% {opacity:.9;transform:translateY(0%) scale(1.01)}
-  100% {opacity:0;transform:translateY(115%) scale(.91)}
+  18% {opacity:1;transform:translateY(-5%) scale(1.06)}
+  38% {opacity:.9;transform:translateY(20%) scale(.94)}
+  62% {opacity:.55;transform:translateY(58%) scale(.88)}
+  82% {opacity:.18;transform:translateY(94%) scale(.82)}
+  100% {opacity:0;transform:translateY(118%) scale(.78)}
 }
 @keyframes caricatureSpringDownFooter {
   0% {opacity:1;transform:translate(-50%,5%) scale(1)}
-  25% {opacity:.9;transform:translate(-50%,0%) scale(1.01)}
-  100% {opacity:0;transform:translate(-50%,115%) scale(.91)}
+  18% {opacity:1;transform:translate(-50%,-5%) scale(1.06)}
+  38% {opacity:.9;transform:translate(-50%,20%) scale(.94)}
+  62% {opacity:.55;transform:translate(-50%,58%) scale(.88)}
+  82% {opacity:.18;transform:translate(-50%,94%) scale(.82)}
+  100% {opacity:0;transform:translate(-50%,118%) scale(.78)}
 }
 #main-footer { overflow: visible !important; position: relative; z-index: 2; }
 @media(max-width:640px) {
