@@ -455,6 +455,18 @@
         let indexFotoActual = 0;
 
         function checkIsTrue(val) { return val === true || String(val).trim().toUpperCase() === 'TRUE'; }
+        const NETLIFY_IMAGE_BASE = 'https://tufotoenfoco.netlify.app/.netlify/functions/';
+        function urlImagenGaleria(url, evento) {
+            const source = String(url || '').trim();
+            if (!source || !/^https?:\/\//i.test(source) || !checkIsTrue(evento?.Marca_agua)) return source;
+            let endpoint = 'imagen-externa';
+            try {
+                const parsed = new URL(source);
+                if (parsed.hostname === 'f003.backblazeb2.com' && parsed.pathname.startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
+            } catch (_) { return source; }
+            return `${NETLIFY_IMAGE_BASE}${endpoint}?watermark=1&url=${encodeURIComponent(source)}`;
+        }
+
 
         function aplicarFondosAlternos() {
             const sections = document.querySelectorAll('section.alternating-section');
@@ -641,9 +653,10 @@
             if(!url){img.src=svgCamara;return;}
             img.style.opacity='.35';
             const preload=new Image();preload.decoding='async';
-            preload.onload=()=>{img.src=url;img.style.opacity='1';};
+            const displayUrl=urlImagenGaleria(url,eventoModalActual);
+            preload.onload=()=>{img.src=displayUrl;img.style.opacity='1';};
             preload.onerror=()=>{img.src=svgCamara;img.style.opacity='1';};
-            preload.src=url;
+            preload.src=urlImagenGaleria(url,eventoModalActual);
             document.querySelectorAll('.gal-thumb').forEach((el,i)=>{
                 el.classList.toggle('border-brand-accent',i===indexFotoActual);
                 el.classList.toggle('opacity-100',i===indexFotoActual);
@@ -658,7 +671,7 @@
         function dibujarMiniaturasModal(){
             document.getElementById('modal-gal-thumbs-container').innerHTML=arrayFotosActuales.map((url,i)=>`
                 <button type="button" onclick="irAFotoModal(${i})" aria-label="Ver fotografía ${i+1}" class="gal-thumb w-24 h-24 lg:w-full lg:h-32 rounded-lg overflow-hidden border-2 ${i===0?'border-brand-accent opacity-100':'border-transparent opacity-50'} cursor-pointer hover:opacity-100 transition-all flex-shrink-0 relative group bg-[#121212]">
-                <img src="${url}" alt="Miniatura ${i+1}" class="w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${placeholderImagen}'"><span class="absolute inset-0 bg-black/20 group-hover:bg-transparent pointer-events-none"></span></button>`).join('');
+                <img src="${urlImagenGaleria(url,eventoModalActual)}" alt="Miniatura ${i+1}" class="w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${placeholderImagen}'"><span class="absolute inset-0 bg-black/20 group-hover:bg-transparent pointer-events-none"></span></button>`).join('');
         }
         async function descargarFotoSeleccionada(){
             const url=arrayFotosActuales[indexFotoActual];if(!url)return;
@@ -1011,7 +1024,7 @@
               <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-5 mt-8 items-start">
                 <div>
                   <div class="relative bg-black rounded-xl overflow-hidden min-h-[300px] md:min-h-[65vh] flex items-center justify-center border border-zinc-800 shadow-none">
-                    <img id="album-main-photo" src="${all[0]}" alt="${safe(ev.Titulo||'Fotografía del álbum')}" class="max-w-full max-h-[78vh] object-contain cursor-pointer transition-opacity duration-500" title="Pulsa para ver los datos de esta fotografía">
+                    <img id="album-main-photo" src="${urlImagenGaleria(all[0],ev)}" alt="${safe(ev.Titulo||'Fotografía del álbum')}" class="max-w-full max-h-[78vh] object-contain cursor-pointer transition-opacity duration-500" title="Pulsa para ver los datos de esta fotografía">
                     
                     <button id="album-photo-prev" type="button" aria-label="Fotografía anterior" class="hidden absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 border border-white/30 text-white rounded-full w-12 h-12 text-2xl hover:bg-brand-accent hover:text-black">‹</button>
                     <button id="album-photo-next" type="button" aria-label="Fotografía siguiente" class="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 border border-white/30 text-white rounded-full w-12 h-12 text-2xl hover:bg-brand-accent hover:text-black">›</button>
@@ -1061,10 +1074,10 @@
                 toggleModal(options,true);
             };
             const updateDetails=()=>{document.getElementById('album-photo-details').innerHTML=photoInfoHtml();document.getElementById('album-photo-details').classList.remove('hidden');};
-            const updateMain=()=>{main.style.opacity='0.25';const url=all[selected];const preload=new Image();preload.onload=()=>{main.src=url;main.style.opacity='1';};preload.onerror=()=>{main.src=placeholderImagen;main.style.opacity='1';};preload.src=url;document.getElementById('album-photo-position').textContent=`${selected+1} / ${all.length}`;document.getElementById('album-photo-prev').classList.toggle('hidden',selected===0);document.getElementById('album-photo-next').classList.toggle('hidden',selected===all.length-1);if(!details.classList.contains('hidden'))updateDetails();};
+            const updateMain=()=>{main.style.opacity='0.25';const url=urlImagenGaleria(all[selected],ev);const preload=new Image();preload.onload=()=>{main.src=url;main.style.opacity='1';};preload.onerror=()=>{main.src=placeholderImagen;main.style.opacity='1';};preload.src=url;document.getElementById('album-photo-position').textContent=`${selected+1} / ${all.length}`;document.getElementById('album-photo-prev').classList.toggle('hidden',selected===0);document.getElementById('album-photo-next').classList.toggle('hidden',selected===all.length-1);if(!details.classList.contains('hidden'))updateDetails();};
             const draw=()=>{const start=page*perPage,end=Math.min(start+perPage,all.length),holder=document.getElementById('album-thumbs');
                 document.getElementById('album-counter').textContent=`${end} de ${fotosTotal} fotografías`;
-                if(Number(holder.dataset.page)!==page){holder.dataset.page=String(page);holder.innerHTML=all.slice(start,end).map((url,i)=>`<button type="button" class="aspect-square rounded-lg overflow-hidden border-2 border-transparent bg-zinc-800 transition-all" data-photo="${start+i}" aria-label="Ver fotografía ${start+i+1}"><img src="${url}" loading="lazy" decoding="async" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='${placeholderImagen}'"></button>`).join('');}
+                if(Number(holder.dataset.page)!==page){holder.dataset.page=String(page);holder.innerHTML=all.slice(start,end).map((url,i)=>`<button type="button" class="aspect-square rounded-lg overflow-hidden border-2 border-transparent bg-zinc-800 transition-all" data-photo="${start+i}" aria-label="Ver fotografía ${start+i+1}"><img src="${urlImagenGaleria(url,ev)}" loading="lazy" decoding="async" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='${placeholderImagen}'"></button>`).join('');}
                 holder.querySelectorAll('button').forEach(b=>{const active=Number(b.dataset.photo)===selected;b.classList.toggle('border-brand-accent',active);b.classList.toggle('border-[3px]',active);b.classList.toggle('shadow-[0_0_0_2px_rgba(241,233,51,0.45),0_0_18px_rgba(241,233,51,0.55)]',active);});
                 document.getElementById('album-prev').disabled=page===0;document.getElementById('album-next').disabled=end>=all.length;
             };
@@ -1081,7 +1094,7 @@
             document.getElementById('album-prev').addEventListener('click',()=>{if(page>0){stopPlay();page--;selected=Math.min(page*perPage,all.length-1);updateMain();draw();}});
             document.getElementById('album-next').addEventListener('click',()=>{if((page+1)*perPage<all.length){stopPlay();page++;selected=page*perPage;updateMain();draw();}});
             const overlay=document.getElementById('album-player-overlay'),playerPhoto=document.getElementById('player-photo');
-            const updatePlayer=()=>{playerPhoto.style.opacity='0';setTimeout(()=>{playerPhoto.src=all[selected];playerPhoto.style.opacity='1';},250);document.getElementById('player-position').textContent=`${selected+1} / ${all.length}`;document.getElementById('player-info').innerHTML=photoInfoHtml();document.getElementById('player-prev').classList.toggle('hidden',selected===0);document.getElementById('player-next').classList.toggle('hidden',selected===all.length-1);};
+            const updatePlayer=()=>{playerPhoto.style.opacity='0';setTimeout(()=>{playerPhoto.src=urlImagenGaleria(all[selected],ev);playerPhoto.style.opacity='1';},250);document.getElementById('player-position').textContent=`${selected+1} / ${all.length}`;document.getElementById('player-info').innerHTML=photoInfoHtml();document.getElementById('player-prev').classList.toggle('hidden',selected===0);document.getElementById('player-next').classList.toggle('hidden',selected===all.length-1);};
             const closePlayer=()=>{stopPlay();overlay.classList.add('opacity-0');setTimeout(()=>{overlay.classList.add('hidden');overlay.classList.remove('flex');},500);};
             document.getElementById('album-play').addEventListener('click',()=>{if(selected>=all.length-1){selected=0;page=0;updateMain();draw();}playerOpen=true;overlay.classList.remove('hidden');overlay.classList.add('flex');requestAnimationFrame(()=>overlay.classList.remove('opacity-0'));updatePlayer();isPlaying=true;document.getElementById('player-pause').textContent='Ⅱ Pausar';playTimer=setInterval(()=>{if(selected>=all.length-1){stopPlay();return;}selected++;page=Math.floor(selected/perPage);updateMain();draw();updatePlayer();},2000);});
             document.getElementById('player-close').addEventListener('click',closePlayer);
@@ -1099,7 +1112,7 @@
             const cats=[...new Set([...(window.categoriasOrdenadas||[]),...(window.categoriasDisponibles||[]),...(window.categoriasMasDeportesOrdenadas||[]),...gals.map(g=>categoriaEfectiva(g))].map(v=>String(v||'').trim()).filter(Boolean))];
             if(mode==='categorias'){
                 const cols=cats.length<=4?Math.max(cats.length,1):(cats.length<=6?3:4);
-                const cards=cats.map(cat=>{const ev=gals.find(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const img=ev?.Foto_Cabecera||placeholderImagen;return `<a href="categoria.html?cat=${encodeURIComponent(cat)}" class="group bg-brand-base border border-zinc-800 rounded-2xl overflow-hidden hover:border-brand-accent transition-all"><div class="h-52 overflow-hidden"><img src="${img}" onerror="this.onerror=null;this.src='${placeholderImagen}'" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"></div><div class="p-5"><h2 class="text-xl font-bold text-white group-hover:text-brand-accent">${cat}</h2><p class="text-sm text-gray-400 mt-1">${gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat)).length} galerías</p></div></a>`;}).join('');
+                const cards=cats.map(cat=>{const ev=gals.find(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const img=ev ? urlImagenGaleria(ev.Foto_Cabecera||placeholderImagen,ev) : placeholderImagen;return `<a href="categoria.html?cat=${encodeURIComponent(cat)}" class="group bg-brand-base border border-zinc-800 rounded-2xl overflow-hidden hover:border-brand-accent transition-all"><div class="h-52 overflow-hidden"><img src="${img}" onerror="this.onerror=null;this.src='${placeholderImagen}'" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"></div><div class="p-5"><h2 class="text-xl font-bold text-white group-hover:text-brand-accent">${cat}</h2><p class="text-sm text-gray-400 mt-1">${gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat)).length} galerías</p></div></a>`;}).join('');
                 root.innerHTML=`<section class="max-w-[95%] 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-16 min-h-[70vh]"><div class="mb-10 border-b border-zinc-800 pb-5"><p class="text-brand-accent text-xs font-bold tracking-widest uppercase mb-3">TUFOTOENFOCO</p><h1 class="text-4xl md:text-5xl font-black text-white">Explora las categorías</h1><p class="text-gray-400 mt-3">Encuentra cada historia por deporte y temática</p></div><div class="grid gap-6" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${cards||'<p class="text-gray-400">No hay categorías disponibles.</p>'}</div><style>@media(max-width:767px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(1,minmax(0,1fr))!important}}@media(min-width:768px) and (max-width:1023px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}</style></section>`;return;
             }
             let filtered=mode==='sinbalon'?gals.filter(g=>['sin balón','sin balon'].includes(normalizarCategoria(g.Categoria_Header))):mode==='cultura'?gals.filter(g=>normalizarCategoria(g.Categoria_Header)==='cultura'):mode==='categoria'?gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(category)):gals;
@@ -1142,7 +1155,7 @@
                 }
             }
             
-            const fot = evento.Foto_Cabecera || placeholderImagen;
+            const fot = urlImagenGaleria(evento.Foto_Cabecera || placeholderImagen, evento);
             const fec = `${evento.Fecha || ''} ${(evento.Fecha && evento.Lugar) ? '•' : ''} ${evento.Lugar || ''}`.trim();
 
             return `
