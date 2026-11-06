@@ -165,14 +165,11 @@
   position: relative;
   cursor: pointer;
   transform-origin: center;
-  transition: transform .24s cubic-bezier(.2,.75,.25,1.2), box-shadow .24s ease, border-color .24s ease;
+  transition: transform .24s cubic-bezier(.2,.75,.25,1.2);
   outline-offset: 5px;
 }
-.caricature-trigger-intro:hover,
-.caricature-trigger-intro:focus-visible {
+.caricature-trigger-intro:hover {
   transform: scale(1.015);
-  box-shadow: 0 12px 34px rgba(241,233,51,.13);
-  border-color: rgba(241,233,51,.8);
 }
 .caricature-trigger-footer { position: relative; }
 .caricature-pop-image {
@@ -185,65 +182,52 @@
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-22px) scale(.72);
-  transform-origin: 50% 85%;
   filter: drop-shadow(0 12px 16px rgba(0,0,0,.38));
+  will-change: transform, opacity;
 }
+/* La caricatura del recuadro nace justo debajo y sube con un muelle. */
 .caricature-trigger-intro .caricature-pop-image {
   right: clamp(8px, 2vw, 26px);
-  bottom: -74px;
+  top: calc(100% - 2px);
+  transform: translateY(105%) scale(.88);
+  transform-origin: 50% 0%;
 }
-.caricature-footer-pop-host {
-  position: relative !important;
-  overflow: visible !important;
-}
-.caricature-footer-pop-host .caricature-pop-image {
-  top: calc(100% - 16px);
+/* La del footer se ancla al propio footer y emerge por debajo de su borde. */
+#main-footer .caricature-pop-image {
+  top: calc(100% - 1px);
   left: 50%;
   width: clamp(190px, 23vw, 285px);
-  transform: translate(-50%, -22px) scale(.72);
+  transform: translate(-50%, 105%) scale(.88);
   transform-origin: 50% 0%;
 }
 .caricature-pop-image.is-visible {
   visibility: visible;
-  animation: caricaturePopIn .62s cubic-bezier(.2,.85,.25,1.35) both;
+  animation: caricatureSpringUp .95s both;
 }
 .caricature-pop-image.is-hiding {
   visibility: visible;
-  animation: caricaturePopOut .28s cubic-bezier(.4,0,.7,.25) both;
+  animation: caricatureSpringDown .48s cubic-bezier(.55,.05,.8,.35) both;
 }
-@keyframes caricaturePopIn {
-  0% { opacity: 0; transform: translateY(-22px) scale(.72); }
-  58% { opacity: 1; transform: translateY(7px) scale(1.035); }
-  78% { opacity: 1; transform: translateY(-3px) scale(.985); }
+@keyframes caricatureSpringUp {
+  0%   { opacity: 0; transform: translateY(105%) scale(.88); }
+  48%  { opacity: .88; transform: translateY(-10%) scale(1.025); }
+  64%  { opacity: 1; transform: translateY(4%) scale(.99); }
+  78%  { opacity: 1; transform: translateY(-2.5%) scale(1.008); }
+  90%  { opacity: 1; transform: translateY(1%) scale(.997); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes caricaturePopOut {
-  0% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-15px) scale(.78); }
+@keyframes caricatureSpringDown {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  22%  { opacity: .95; transform: translateY(-2%) scale(1.005); }
+  100% { opacity: 0; transform: translateY(105%) scale(.88); }
 }
-.caricature-footer-pop-host .caricature-pop-image.is-visible {
-  animation-name: caricatureFooterPopIn;
-}
-.caricature-footer-pop-host .caricature-pop-image.is-hiding {
-  animation-name: caricatureFooterPopOut;
-}
-@keyframes caricatureFooterPopIn {
-  0% { opacity:0; transform:translate(-50%,-22px) scale(.72); }
-  58% { opacity:1; transform:translate(-50%,7px) scale(1.035); }
-  78% { opacity:1; transform:translate(-50%,-3px) scale(.985); }
-  100% { opacity:1; transform:translate(-50%,0) scale(1); }
-}
-@keyframes caricatureFooterPopOut {
-  0% { opacity:1; transform:translate(-50%,0) scale(1); }
-  100% { opacity:0; transform:translate(-50%,-15px) scale(.78); }
-}
-#main-footer { overflow: visible !important; position: relative; }
-#main-footer.caricature-footer-open { padding-bottom: 245px !important; }
+#main-footer { overflow: visible !important; position: relative; z-index: 2; }
+/* Reserva espacio bajo el footer para que la caricatura pueda desplegarse completa. */
+#main-footer.caricature-footer-open { margin-bottom: 285px !important; }
 @media (max-width: 640px) {
-  .caricature-trigger-intro .caricature-pop-image { right: 4px; bottom: -58px; width: min(68vw, 245px); }
-  .caricature-footer-pop-host .caricature-pop-image { width: min(66vw, 245px); }
-  #main-footer.caricature-footer-open { padding-bottom: 205px !important; }
+  .caricature-trigger-intro .caricature-pop-image { right: 4px; width: min(68vw, 245px); }
+  #main-footer .caricature-pop-image { width: min(66vw, 245px); }
+  #main-footer.caricature-footer-open { margin-bottom: 220px !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .caricature-trigger-intro { transition: none; }
@@ -1238,13 +1222,21 @@
     image.src = imagePath;
     image.alt = 'Caricatura de TUFOTOENFOCO';
     image.setAttribute('aria-hidden', 'true');
-    trigger.appendChild(image);
+
     if (kind === 'footer') {
-      trigger.parentElement?.classList.add('caricature-footer-pop-host');
+      // La imagen cuelga del footer, no del enlace, para salir desde su borde inferior.
+      const footer = document.getElementById('main-footer');
+      if (footer) footer.appendChild(image);
+      else trigger.appendChild(image);
+    } else {
+      trigger.appendChild(image);
     }
+
     const setOpen = (open) => {
       trigger.setAttribute('aria-expanded', String(open));
-      if (kind === 'footer') document.getElementById('main-footer')?.classList.toggle('caricature-footer-open', open);
+      if (kind === 'footer') {
+        document.getElementById('main-footer')?.classList.toggle('caricature-footer-open', open);
+      }
       image.classList.remove('is-visible', 'is-hiding');
       if (open) {
         image.style.visibility = 'visible';
@@ -1266,7 +1258,7 @@
       });
     }
     image.addEventListener('animationend', (event) => {
-      if (event.animationName.includes('PopOut')) {
+      if (event.animationName === 'caricatureSpringDown') {
         image.classList.remove('is-hiding');
         image.style.visibility = 'hidden';
       }
