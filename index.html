@@ -497,15 +497,28 @@
         let arrayFotosActuales = [];
         let indexFotoActual = 0;
 
-        function checkIsTrue(val) { return val === true || String(val).trim().toUpperCase() === 'TRUE'; }
+        function checkIsTrue(val) {
+            if (val === true) return true;
+            return ['TRUE', '1', 'SI', 'SÍ', 'YES'].includes(String(val ?? '').trim().toUpperCase());
+        }
+        function eventoTieneMarcaAgua(evento) {
+            if (!evento || typeof evento !== 'object') return false;
+            const clave = Object.keys(evento).find(k => String(k).trim().toLowerCase().replace(/[\s_-]/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 'marcaagua');
+            return clave !== undefined && checkIsTrue(evento[clave]);
+        }
+        function codificarIdAlbum(id) {
+            const encoded = btoa(unescape(encodeURIComponent(String(id ?? ''))))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+            return `tf_${encoded}`;
+        }
         const NETLIFY_IMAGE_BASE = 'https://tufotoenfoco.netlify.app/.netlify/functions/';
         function urlImagenGaleria(url, evento) {
             const source = String(url || '').trim();
-            if (!source || !/^https?:\/\//i.test(source) || !checkIsTrue(evento?.Marca_agua)) return source;
+            if (!source || !/^https?:\/\//i.test(source) || !eventoTieneMarcaAgua(evento)) return source;
             let endpoint = 'imagen-externa';
             try {
                 const parsed = new URL(source);
-                if (parsed.hostname === 'f003.backblazeb2.com' && parsed.pathname.startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
+                if (parsed.hostname.toLowerCase() === 'f003.backblazeb2.com' && parsed.pathname.toLowerCase().startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
             } catch (_) { return source; }
             const encodedSource = btoa(unescape(encodeURIComponent(source)))
                 .replace(/\+/g, '-')
@@ -851,7 +864,7 @@
             const mImg = document.getElementById('modal-imagen-simple');
             
             document.getElementById('btn-cerrar-galeria').addEventListener('click', () => toggleModal(mGal, false));
-            document.getElementById('modal-btn-ver-album').addEventListener('click',e=>{e.preventDefault();if(eventoModalActual)location.href='album.html?id='+encodeURIComponent(eventoModalActual.ID_Evento||'');});
+            document.getElementById('modal-btn-ver-album').addEventListener('click',e=>{e.preventDefault();if(eventoModalActual)location.href='album.html?id='+codificarIdAlbum(eventoModalActual.ID_Evento||'');});
             document.getElementById('btn-cerrar-imagen-simple').addEventListener('click', () => toggleModal(mImg, false));
             
             mGal.addEventListener('click', (e) => { if(e.target === mGal) toggleModal(mGal, false); });
@@ -1079,7 +1092,7 @@
             const cat=categoriaEfectiva(ev);const categoryHref=['sin balón','sin balon'].includes(normalizarCategoria(cat))?'sin-balon.html':normalizarCategoria(cat)==='cultura'?'cultura.html':'categoria.html?cat='+encodeURIComponent(cat);
             const photos=await fetchFotosDesdeBackblaze(id);const all=photos.length?photos:(ev.Foto_Cabecera?[ev.Foto_Cabecera]:[]);const total=Number(ev.Total_Fotos)||all.length||0;let page=0,selected=0;const perPage=16;
             const same=gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const idx=same.findIndex(g=>String(g.ID_Evento)===id);const next=same[idx+1];
-            root.innerHTML=`<section class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen"><nav class="text-sm text-gray-400 mb-5"><a href="galerias.html?tipo=categorias" class="hover:text-brand-accent">Categorías</a><span class="mx-2">/</span><a href="${categoryHref}" class="hover:text-brand-accent">${cat}</a></nav><h1 class="text-3xl md:text-5xl font-black text-white">${ev.Titulo||''}</h1><div class="text-gray-400 mt-3 flex flex-wrap gap-x-4 gap-y-1"><span>${ev.Fecha||''}</span><span>${ev.Lugar||''}</span><span>${total} fotografías</span></div><p class="text-gray-300 text-base md:text-lg leading-relaxed mt-5 max-w-5xl">${ev.Resultados||ev.Descripcion_Larga||''}</p><div class="mt-8 bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[65vh]"><img id="album-main-photo" src="${urlImagenGaleria(all[0]||svgCamara,ev)}" alt="${ev.Titulo||'Fotografía del álbum'}" class="max-w-full max-h-[75vh] object-contain"></div><div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-zinc-800 py-4"><p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos.</p>${/^https?:\/\//i.test(String(ev.Link_Compra||''))?`<a href="${ev.Link_Compra}" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white">Tu recuerdo sin logo · descárgalo aquí</a>`:''}</div><div class="flex flex-wrap items-center justify-between gap-3 mt-7"><p id="album-counter" class="text-sm text-gray-300 font-semibold">${Math.min(perPage,total)} de ${total} archivos</p><div class="flex gap-2"><button id="album-prev" class="px-5 py-2 rounded-md border border-zinc-700 text-white disabled:opacity-30">Atrás</button><button id="album-next" class="px-5 py-2 rounded-md bg-brand-accent text-black font-bold disabled:opacity-30">Siguiente</button></div></div><div id="album-thumbs" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5"></div><div class="flex flex-wrap justify-between gap-3 mt-10 border-t border-zinc-800 pt-6"><a href="${categoryHref}" class="px-5 py-3 border border-zinc-700 rounded-md text-white hover:border-brand-accent">Volver a la categoría</a>${next?`<a href="album.html?id=${encodeURIComponent(next.ID_Evento)}" class="px-5 py-3 bg-brand-accent text-black font-bold rounded-md">Siguiente evento</a>`:'<span></span>'}</div></section>`;
+            root.innerHTML=`<section class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen"><nav class="text-sm text-gray-400 mb-5"><a href="galerias.html?tipo=categorias" class="hover:text-brand-accent">Categorías</a><span class="mx-2">/</span><a href="${categoryHref}" class="hover:text-brand-accent">${cat}</a></nav><h1 class="text-3xl md:text-5xl font-black text-white">${ev.Titulo||''}</h1><div class="text-gray-400 mt-3 flex flex-wrap gap-x-4 gap-y-1"><span>${ev.Fecha||''}</span><span>${ev.Lugar||''}</span><span>${total} fotografías</span></div><p class="text-gray-300 text-base md:text-lg leading-relaxed mt-5 max-w-5xl">${ev.Resultados||ev.Descripcion_Larga||''}</p><div class="mt-8 bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[65vh]"><img id="album-main-photo" src="${urlImagenGaleria(all[0]||svgCamara,ev)}" alt="${ev.Titulo||'Fotografía del álbum'}" class="max-w-full max-h-[75vh] object-contain"></div><div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-zinc-800 py-4"><p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos.</p>${/^https?:\/\//i.test(String(ev.Link_Compra||''))?`<a href="${ev.Link_Compra}" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white">Tu recuerdo sin logo · descárgalo aquí</a>`:''}</div><div class="flex flex-wrap items-center justify-between gap-3 mt-7"><p id="album-counter" class="text-sm text-gray-300 font-semibold">${Math.min(perPage,total)} de ${total} archivos</p><div class="flex gap-2"><button id="album-prev" class="px-5 py-2 rounded-md border border-zinc-700 text-white disabled:opacity-30">Atrás</button><button id="album-next" class="px-5 py-2 rounded-md bg-brand-accent text-black font-bold disabled:opacity-30">Siguiente</button></div></div><div id="album-thumbs" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5"></div><div class="flex flex-wrap justify-between gap-3 mt-10 border-t border-zinc-800 pt-6"><a href="${categoryHref}" class="px-5 py-3 border border-zinc-700 rounded-md text-white hover:border-brand-accent">Volver a la categoría</a>${next?`<a href="album.html?id=${codificarIdAlbum(next.ID_Evento)}" class="px-5 py-3 bg-brand-accent text-black font-bold rounded-md">Siguiente evento</a>`:'<span></span>'}</div></section>`;
             const draw=()=>{const start=page*perPage,end=Math.min(start+perPage,all.length);document.getElementById('album-counter').textContent=`${Math.min((page+1)*perPage,total)} de ${total} archivos`;document.getElementById('album-thumbs').innerHTML=all.slice(start,end).map((url,i)=>`<button type="button" class="aspect-square rounded-lg overflow-hidden border-2 ${start+i===selected?'border-brand-accent':'border-transparent'}" data-photo="${start+i}"><img src="${urlImagenGaleria(url,ev)}" loading="lazy" class="w-full h-full object-cover"></button>`).join('');document.getElementById('album-prev').disabled=page===0;document.getElementById('album-next').disabled=end>=all.length;document.querySelectorAll('#album-thumbs button').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.photo);document.getElementById('album-main-photo').src=urlImagenGaleria(all[selected],ev);draw();}));};
             document.getElementById('album-prev').addEventListener('click',()=>{if(page>0){page--;draw();}});document.getElementById('album-next').addEventListener('click',()=>{if((page+1)*perPage<all.length){page++;selected=page*perPage;document.getElementById('album-main-photo').src=urlImagenGaleria(all[selected],ev);draw();}});draw();
         }

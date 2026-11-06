@@ -454,15 +454,38 @@
         let arrayFotosActuales = [];
         let indexFotoActual = 0;
 
-        function checkIsTrue(val) { return val === true || String(val).trim().toUpperCase() === 'TRUE'; }
+        function checkIsTrue(val) {
+            if (val === true) return true;
+            return ['TRUE', '1', 'SI', 'SÍ', 'YES'].includes(String(val ?? '').trim().toUpperCase());
+        }
+        function eventoTieneMarcaAgua(evento) {
+            if (!evento || typeof evento !== 'object') return false;
+            const clave = Object.keys(evento).find(k => String(k).trim().toLowerCase().replace(/[\s_-]/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 'marcaagua');
+            return clave !== undefined && checkIsTrue(evento[clave]);
+        }
+        function codificarIdAlbum(id) {
+            const encoded = btoa(unescape(encodeURIComponent(String(id ?? ''))))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+            return `tf_${encoded}`;
+        }
+        function decodificarIdAlbum(valor) {
+            const raw = String(valor ?? '');
+            if (!raw.startsWith('tf_')) return raw; // Compatibilidad con enlaces antiguos.
+            try {
+                const base64 = raw.slice(3).replace(/-/g, '+').replace(/_/g, '/');
+                return decodeURIComponent(escape(atob(base64)));
+            } catch (_) {
+                return '';
+            }
+        }
         const NETLIFY_IMAGE_BASE = 'https://tufotoenfoco.netlify.app/.netlify/functions/';
         function urlImagenGaleria(url, evento) {
             const source = String(url || '').trim();
-            if (!source || !/^https?:\/\//i.test(source) || !checkIsTrue(evento?.Marca_agua)) return source;
+            if (!source || !/^https?:\/\//i.test(source) || !eventoTieneMarcaAgua(evento)) return source;
             let endpoint = 'imagen-externa';
             try {
                 const parsed = new URL(source);
-                if (parsed.hostname === 'f003.backblazeb2.com' && parsed.pathname.startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
+                if (parsed.hostname.toLowerCase() === 'f003.backblazeb2.com' && parsed.pathname.toLowerCase().startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
             } catch (_) { return source; }
             const encodedSource = btoa(unescape(encodeURIComponent(source)))
                 .replace(/\+/g, '-')
@@ -757,7 +780,7 @@
             const mImg = document.getElementById('modal-imagen-simple');
             
             document.getElementById('btn-cerrar-galeria').addEventListener('click', () => toggleModal(mGal, false));
-            document.getElementById('modal-btn-ver-album').addEventListener('click',e=>{e.preventDefault();if(eventoModalActual)location.href='album.html?id='+encodeURIComponent(eventoModalActual.ID_Evento||'');});
+            document.getElementById('modal-btn-ver-album').addEventListener('click',e=>{e.preventDefault();if(eventoModalActual)location.href='album.html?id='+codificarIdAlbum(eventoModalActual.ID_Evento||'');});
             document.getElementById('btn-cerrar-imagen-simple').addEventListener('click', () => toggleModal(mImg, false));
             
             mGal.addEventListener('click', (e) => { if(e.target === mGal) toggleModal(mGal, false); });
@@ -992,7 +1015,7 @@
             const root=document.getElementById('dynamic-page');
             if(!root)return;
             root.classList.remove('hidden');
-            const id=new URLSearchParams(location.search).get('id')||'';
+            const id=decodificarIdAlbum(new URLSearchParams(location.search).get('id')||'');
             const ev=gals.find(g=>String(g.ID_Evento)===id);
             if(!ev){root.innerHTML='<section class="max-w-5xl mx-auto px-6 py-24 text-center"><h1 class="text-3xl font-bold text-white">Álbum no encontrado</h1><p class="text-gray-400 mt-3">No se ha encontrado el evento solicitado.</p><a href="galerias.html?tipo=categorias" class="inline-block mt-6 text-brand-accent">Volver a categorías</a></section>';return;}
             const cat=categoriaEfectiva(ev);
@@ -1043,7 +1066,7 @@
                 <button id="album-prev" type="button" class="px-5 py-3 rounded-md border border-zinc-700 text-white hover:border-brand-accent disabled:opacity-30 disabled:cursor-not-allowed">Atrás</button>
                 <a href="${categoryHref}" class="px-5 py-3 rounded-md border border-zinc-700 text-white hover:border-brand-accent">Volver a la categoría</a>
                 <button id="album-next" type="button" class="px-5 py-3 rounded-md border border-zinc-700 text-white hover:border-brand-accent disabled:opacity-30 disabled:cursor-not-allowed">Siguiente</button>
-                ${next?`<a href="album.html?id=${encodeURIComponent(next.ID_Evento)}" class="px-5 py-3 rounded-md border border-zinc-700 text-white hover:border-brand-accent">Siguiente evento</a>`:'<span class="px-5 py-3 rounded-md border border-zinc-800 text-zinc-600 cursor-not-allowed" aria-disabled="true">Siguiente evento</span>'}
+                ${next?`<a href="album.html?id=${codificarIdAlbum(next.ID_Evento)}" class="px-5 py-3 rounded-md border border-zinc-700 text-white hover:border-brand-accent">Siguiente evento</a>`:'<span class="px-5 py-3 rounded-md border border-zinc-800 text-zinc-600 cursor-not-allowed" aria-disabled="true">Siguiente evento</span>'}
               </div>
             </section>
             <div id="album-player-overlay" class="fixed inset-0 z-[300] hidden items-center justify-center bg-black/95 backdrop-blur-lg p-4 opacity-0 transition-opacity duration-500">
