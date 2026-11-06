@@ -223,9 +223,16 @@
 
 
 <style id="caricature-interaction-styles">
-/* La caricatura se mantiene en una capa posterior al contenido del recuadro/footer. */
-.caricature-trigger-intro {
+/* La imagen vive en una capa hermana: el fondo del panel/footer se pinta por delante. */
+.caricature-intro-wrap,
+.caricature-footer-wrap {
   position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+.caricature-trigger-intro {
+  position: relative !important;
+  z-index: 2 !important;
   isolation: isolate;
   cursor: pointer;
   transform-origin: center;
@@ -233,90 +240,81 @@
   outline-offset: 5px;
 }
 .caricature-trigger-intro:hover { transform: scale(1.015); }
-.caricature-trigger-intro > :not(.caricature-pop-image) {
-  position: relative;
-  z-index: 1;
-}
-.caricature-trigger-footer { position: relative; }
+.caricature-trigger-footer { position: relative; z-index: 2 !important; }
 .caricature-pop-image {
   position: absolute;
   display: none;
-  width: clamp(95px, 13.5vw, 165px);
   height: auto;
   object-fit: contain;
-  z-index: 0;
+  z-index: 1 !important;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  clip-path: inset(0 0 5% 0);
   filter: drop-shadow(0 8px 10px rgba(0,0,0,.32));
   will-change: transform, opacity;
 }
-/* Nace completamente por debajo del borde superior y termina asomando sin rebasarlo. */
-.caricature-trigger-intro .caricature-pop-image {
+.caricature-intro-wrap > .caricature-pop-image {
   right: clamp(6px, 1.5vw, 16px);
-  bottom: calc(100% - 1px);
-  transform: translateY(5%) scale(.94);
+  bottom: 100%;
+  width: clamp(95px, 13.5vw, 165px);
+  transform: translateY(100%) scale(.94);
   transform-origin: 50% 100%;
 }
-/* En el footer, la imagen queda en una capa inferior al contenido del pie. */
-#main-footer { overflow: visible !important; position: relative; z-index: 2; }
-#main-footer > div { position: relative; z-index: 1; }
-#main-footer .caricature-pop-image {
-  bottom: calc(100% - 1px);
+.caricature-footer-wrap > .caricature-pop-image {
   left: 50%;
+  bottom: 100%;
   width: clamp(82px, 11.5vw, 143px);
-  transform: translate(-50%, 5%) scale(.94);
+  transform: translate(-50%, 100%) scale(.94);
   transform-origin: 50% 100%;
 }
-.caricature-trigger-intro .caricature-pop-image.is-visible {
+/* El propio panel/footer tiene una capa superior opaca que oculta la parte solapada. */
+.caricature-intro-wrap > .caricature-trigger-intro { z-index: 2 !important; }
+#main-footer { position: relative; z-index: 2 !important; overflow: visible !important; }
+.caricature-trigger-intro .caricature-pop-image.is-visible,
+.caricature-intro-wrap > .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpCard 1.65s cubic-bezier(.2,.72,.25,1) both;
+  animation: caricatureSpringUpCard 1.5s cubic-bezier(.2,.72,.25,1) both;
 }
-#main-footer .caricature-pop-image.is-visible {
+.caricature-footer-wrap > .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpFooter 1.65s cubic-bezier(.2,.72,.25,1) both;
+  animation: caricatureSpringUpFooter 1.5s cubic-bezier(.2,.72,.25,1) both;
 }
-.caricature-trigger-intro .caricature-pop-image.is-hiding {
+.caricature-intro-wrap > .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownCard .9s cubic-bezier(.55,0,.8,.35) both;
+  animation: caricatureSpringDownCard .85s cubic-bezier(.55,0,.8,.35) both;
 }
-#main-footer .caricature-pop-image.is-hiding {
+.caricature-footer-wrap > .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownFooter .9s cubic-bezier(.55,0,.8,.35) both;
+  animation: caricatureSpringDownFooter .85s cubic-bezier(.55,0,.8,.35) both;
 }
-/* Rebote amortiguado: todos los desplazamientos permanecen bajo el borde (>= 0%). */
+/* El movimiento es siempre hacia arriba hasta el borde, sin rebasar la posición final. */
 @keyframes caricatureSpringUpCard {
-  0%   {opacity:0; transform:translateY(118%) scale(.78)}
-  48%  {opacity:.9; transform:translateY(23%) scale(1.035)}
-  64%  {opacity:1; transform:translateY(1%) scale(.975)}
-  76%  {opacity:1; transform:translateY(10%) scale(1.018)}
-  88%  {opacity:1; transform:translateY(3%) scale(.992)}
-  100% {opacity:1; transform:translateY(5%) scale(1)}
+  0% { opacity:0; transform:translateY(100%) scale(.82) }
+  58% { opacity:1; transform:translateY(24%) scale(1.025) }
+  76% { opacity:1; transform:translateY(7%) scale(.985) }
+  89% { opacity:1; transform:translateY(2%) scale(1.008) }
+  100% { opacity:1; transform:translateY(0) scale(1) }
 }
 @keyframes caricatureSpringUpFooter {
-  0%   {opacity:0; transform:translate(-50%,118%) scale(.78)}
-  48%  {opacity:.9; transform:translate(-50%,23%) scale(1.035)}
-  64%  {opacity:1; transform:translate(-50%,1%) scale(.975)}
-  76%  {opacity:1; transform:translate(-50%,10%) scale(1.018)}
-  88%  {opacity:1; transform:translate(-50%,3%) scale(.992)}
-  100% {opacity:1; transform:translate(-50%,5%) scale(1)}
+  0% { opacity:0; transform:translate(-50%,100%) scale(.82) }
+  58% { opacity:1; transform:translate(-50%,24%) scale(1.025) }
+  76% { opacity:1; transform:translate(-50%,7%) scale(.985) }
+  89% { opacity:1; transform:translate(-50%,2%) scale(1.008) }
+  100% { opacity:1; transform:translate(-50%,0) scale(1) }
 }
 @keyframes caricatureSpringDownCard {
-  0% {opacity:1;transform:translateY(5%) scale(1)}
-  28% {opacity:1;transform:translateY(20%) scale(.98)}
-  65% {opacity:.5;transform:translateY(70%) scale(.88)}
-  100% {opacity:0;transform:translateY(118%) scale(.78)}
+  0% { opacity:1; transform:translateY(0) scale(1) }
+  35% { opacity:1; transform:translateY(18%) scale(.98) }
+  100% { opacity:0; transform:translateY(100%) scale(.82) }
 }
 @keyframes caricatureSpringDownFooter {
-  0% {opacity:1;transform:translate(-50%,5%) scale(1)}
-  28% {opacity:1;transform:translate(-50%,20%) scale(.98)}
-  65% {opacity:.5;transform:translate(-50%,70%) scale(.88)}
-  100% {opacity:0;transform:translate(-50%,118%) scale(.78)}
+  0% { opacity:1; transform:translate(-50%,0) scale(1) }
+  35% { opacity:1; transform:translate(-50%,18%) scale(.98) }
+  100% { opacity:0; transform:translate(-50%,100%) scale(.82) }
 }
 @media(max-width:640px) {
- .caricature-trigger-intro .caricature-pop-image {right:4px;width:min(34vw,122px)}
- #main-footer .caricature-pop-image {width:min(33vw,122px)}
+ .caricature-intro-wrap > .caricature-pop-image {right:4px;width:min(34vw,122px)}
+ .caricature-footer-wrap > .caricature-pop-image {width:min(33vw,122px)}
 }
 @media(prefers-reduced-motion:reduce) {
  .caricature-trigger-intro {transition:none}
@@ -1284,40 +1282,41 @@
 (() => {
   const imagePath = 'assets/caricatura-tufotoenfoco.png';
   const initialized = new WeakSet();
-  function attachCaricature(trigger, kind) {
-    if (!trigger || initialized.has(trigger)) return;
-    initialized.add(trigger);
+  function makeImage(kind) {
     const image = document.createElement('img');
     image.className = 'caricature-pop-image';
     image.src = imagePath;
     image.alt = 'Caricatura de TUFOTOENFOCO';
     image.setAttribute('aria-hidden', 'true');
-
+    return image;
+  }
+  function attachCaricature(trigger, kind) {
+    if (!trigger || initialized.has(trigger)) return;
+    initialized.add(trigger);
+    const image = makeImage(kind);
+    let layer;
     if (kind === 'footer') {
       const footer = document.getElementById('main-footer');
-      if (footer) footer.appendChild(image);
-      else trigger.appendChild(image);
+      if (!footer || !footer.parentElement) return;
+      layer = footer.parentElement;
+      layer.classList.add('caricature-footer-wrap');
+      layer.insertBefore(image, footer);
+      footer.style.position = 'relative';
+      footer.style.zIndex = '2';
     } else {
-      trigger.appendChild(image);
+      layer = document.createElement('div');
+      layer.className = 'caricature-intro-wrap';
+      trigger.parentNode.insertBefore(layer, trigger);
+      layer.appendChild(image);
+      layer.appendChild(trigger);
     }
-
     const setOpen = (open) => {
       trigger.setAttribute('aria-expanded', String(open));
-      if (kind === 'footer') {
-        document.getElementById('main-footer')?.classList.toggle('caricature-footer-open', open);
-      }
       image.classList.remove('is-visible', 'is-hiding');
-      if (open) {
-        image.style.display = 'block';
-        image.style.visibility = 'visible';
-        void image.offsetWidth;
-        image.classList.add('is-visible');
-      } else {
-        image.style.display = 'block';
-        image.style.visibility = 'visible';
-        void image.offsetWidth;
-        image.classList.add('is-hiding');
-      }
+      image.style.display = 'block';
+      image.style.visibility = 'visible';
+      void image.offsetWidth;
+      image.classList.add(open ? 'is-visible' : 'is-hiding');
     };
     const toggle = (event) => {
       event?.preventDefault?.();
@@ -1342,7 +1341,9 @@
     document.querySelectorAll('.caricature-trigger-intro').forEach(el => attachCaricature(el, 'intro'));
   }
   function initFooter() {
-    document.querySelectorAll('.caricature-trigger-footer').forEach(el => attachCaricature(el, 'footer'));
+    const footer = document.getElementById('main-footer');
+    const trigger = footer?.querySelector('.caricature-trigger-footer');
+    if (trigger) attachCaricature(trigger, 'footer');
   }
   initIntro();
   initFooter();
