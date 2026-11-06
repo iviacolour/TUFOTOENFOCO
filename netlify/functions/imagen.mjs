@@ -47,7 +47,7 @@ export default async (request) => {
       return new Response("Imagen demasiado grande", { status: 413 });
     }
 
-    const metadata = await sharp(input, { animated: false, limitInputPixels: 40000000 }).metadata();
+    const metadata = await sharp(input, { animated: false, limitInputPixels: false }).metadata();
     if (!metadata.width || !metadata.height) {
       return new Response("Formato de imagen no compatible", { status: 415 });
     }
@@ -68,7 +68,7 @@ export default async (request) => {
     const left = Math.max(0, Math.round((metadata.width - (logoMeta.width || logoWidth)) / 2));
     const top = Math.max(0, Math.round((metadata.height - (logoMeta.height || 1)) / 2));
 
-    const output = await sharp(input, { animated: false, limitInputPixels: 40000000 })
+    const output = await sharp(input, { animated: false, limitInputPixels: false })
       .composite([{ input: overlay, left, top }])
       .webp({ quality: 88 })
       .toBuffer();
