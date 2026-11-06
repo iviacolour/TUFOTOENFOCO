@@ -464,7 +464,11 @@
                 const parsed = new URL(source);
                 if (parsed.hostname === 'f003.backblazeb2.com' && parsed.pathname.startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
             } catch (_) { return source; }
-            return `${NETLIFY_IMAGE_BASE}${endpoint}?watermark=1&url=${encodeURIComponent(source)}`;
+            const encodedSource = btoa(unescape(encodeURIComponent(source)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/g, '');
+            return `${NETLIFY_IMAGE_BASE}${endpoint}?watermark=1&url64=${encodedSource}`;
         }
 
 

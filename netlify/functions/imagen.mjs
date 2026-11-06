@@ -8,7 +8,18 @@ const LOGO = Buffer.from("iVBORw0KGgoAAAANSUhEUgAACAAAAAKsCAYAAAB4CV3rAAAQAElEQV
 export default async (request) => {
   try {
     const requestUrl = new URL(request.url);
-    const source = requestUrl.searchParams.get("url");
+    // Acepta url64 (Base64 URL-safe) para que la URL original no quede visible
+    // en la dirección de Netlify. Se mantiene "url" por compatibilidad.
+    const encodedSource = requestUrl.searchParams.get("url64");
+    let source = requestUrl.searchParams.get("url");
+    if (encodedSource) {
+      try {
+        const base64 = encodedSource.replace(/-/g, "+").replace(/_/g, "/");
+        source = Buffer.from(base64, "base64").toString("utf8");
+      } catch (_) {
+        return new Response("URL codificada no válida", { status: 400 });
+      }
+    }
     const watermark = requestUrl.searchParams.get("watermark") === "1";
 
     if (!source || !watermark) {
