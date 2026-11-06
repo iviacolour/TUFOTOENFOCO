@@ -168,6 +168,9 @@
   isolation: isolate;
   overflow: visible;
 }
+.caricature-intro-wrap {
+  width: 100%;
+}
 .caricature-trigger-intro {
   position: relative !important;
   z-index: 2 !important;
@@ -192,7 +195,7 @@
   will-change: transform, opacity;
 }
 .caricature-intro-wrap > .caricature-pop-image {
-  right: clamp(6px, 1.5vw, 16px);
+  right: 0; /* El JS alinea este borde con el borde derecho real del recuadro. */
   bottom: 100%;
   width: clamp(95px, 13.5vw, 165px);
   transform: translateY(100%) scale(.94);
@@ -251,7 +254,7 @@
   100% { opacity:0; transform:translate(-50%,100%) scale(.82) }
 }
 @media(max-width:640px) {
- .caricature-intro-wrap > .caricature-pop-image {right:4px;width:min(34vw,122px)}
+ .caricature-intro-wrap > .caricature-pop-image {width:min(34vw,122px)}
  .caricature-footer-wrap > .caricature-pop-image {width:min(33vw,122px)}
 }
 @media(prefers-reduced-motion:reduce) {
@@ -594,6 +597,8 @@
                     sec.classList.remove('bg-zinc-950', 'bg-[#121212]');
                     if (isDark) sec.classList.add('bg-zinc-950');
                     else sec.classList.add('bg-[#121212]');
+                    const introPanel = sec.querySelector('.caricature-trigger-intro');
+                    if (introPanel) introPanel.style.setProperty('background-color', isDark ? '#121212' : '#09090b', 'important');
                     isDark = !isDark; 
                 }
             });
@@ -1265,6 +1270,18 @@
       trigger.parentNode.insertBefore(layer, trigger);
       layer.appendChild(image);
       layer.appendChild(trigger);
+      const alignImageToCardRight = () => {
+        const layerRect = layer.getBoundingClientRect();
+        const triggerRect = trigger.getBoundingClientRect();
+        image.style.right = `${Math.max(0, layerRect.right - triggerRect.right)}px`;
+      };
+      alignImageToCardRight();
+      if (typeof ResizeObserver !== 'undefined') {
+        const resizeObserver = new ResizeObserver(alignImageToCardRight);
+        resizeObserver.observe(layer);
+        resizeObserver.observe(trigger);
+      }
+      window.addEventListener('resize', alignImageToCardRight, { passive: true });
     }
     const setOpen = (open) => {
       trigger.setAttribute('aria-expanded', String(open));
