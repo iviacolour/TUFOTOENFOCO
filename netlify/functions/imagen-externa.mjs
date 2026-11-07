@@ -47,98 +47,92 @@ async function descargarImagenPublica(initialUrl) {
   throw new Error('No se pudo descargar la imagen');
 }
 
-export default async (request) => {
-  try {
-    const requestUrl = new URL(request.url);
-    // Acepta url64 (Base64 URL-safe) para que la URL original no quede visible
-    // en la dirección de Netlify. Se mantiene "url" por compatibilidad.
-    const encodedSource = requestUrl.searchParams.get("url64");
-    let source = requestUrl.searchParams.get("url");
-    if (encodedSource) {
-      try {
-        const base64 = encodedSource.replace(/-/g, "+").replace(/_/g, "/");
-        source = Buffer.from(base64, "base64").toString("utf8");
-      } catch (_) {
-        return new Response("URL codificada no válida", { status: 400 });
-      }
-    }
-    const watermark = requestUrl.searchParams.get("watermark") === "1";
-    const download = requestUrl.searchParams.get("download") === "1";
-    const filename = (requestUrl.searchParams.get("filename") || "fotografia").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 90) || "fotografia";
 
-    if (!source) {
-      return new Response("Falta la URL de la imagen", { status: 400 });
-    }
-
-    let imageUrl;
-    try { imageUrl = new URL(source); }
-    catch { return new Response("URL no válida", { status: 400 }); }
-
-    // Esta función se usa solo para cabeceras externas de la columna H.
-    // Valida host público, DNS y redirecciones para evitar destinos locales/privados.
-    if (imageUrl.hostname === BUCKET_HOST && imageUrl.pathname.startsWith(BUCKET_PREFIX)) {
-      return new Response("Usa la función imagen para archivos de Backblaze", { status: 400 });
-    }
-    const upstream = await descargarImagenPublica(imageUrl);
-    if (!upstream.ok) {
-      return new Response("No se pudo obtener la imagen original", { status: upstream.status });
-    }
-
-    const contentType = (upstream.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.startsWith("image/")) {
-      return new Response("El recurso no es una imagen", { status: 415 });
-    }
-
-    const declaredLength = Number(upstream.headers.get("content-length") || 0);
-    if (declaredLength > MAX_INPUT_BYTES) {
-      return new Response("Imagen demasiado grande", { status: 413 });
-    }
-
-    const input = Buffer.from(await upstream.arrayBuffer());
-    if (input.length > MAX_INPUT_BYTES) {
-      return new Response("Imagen demasiado grande", { status: 413 });
-    }
-
-    const metadata = await sharp(input, { animated: false, limitInputPixels: 40000000 }).metadata();
-    if (!metadata.width || !metadata.height) {
-      return new Response("Formato de imagen no compatible", { status: 415 });
-    }
-
-    // La marca de agua se aplica solo cuando la galería la tiene activada.
-    let processed = sharp(input, { animated: false, limitInputPixels: 40000000 }).rotate();
-    if (watermark) {
-    const logoWidth = Math.max(1, Math.round(metadata.width * 0.70));
-    const logoBuffer = await sharp(LOGO)
-      .resize({ width: logoWidth, fit: "inside", withoutEnlargement: true })
-      .png()
-      .toBuffer();
-
+const FORMAT_INFO = {
+  jpeg: { ext: "jpg", mime: "image/jpeg" },
+  jpg: { ext: "jpg", mime: "image/jpeg" },
+  png: { ext: "png", mime: "image/png" },
+  webp: { ext: "webp", mime: "image/webp" },
+  avif: { ext: "avif", mime: "image/avif" },
+  heif: { ext: "avif", mime: "image/avif" },
+  tiff: { ext: "tif", mime: "image/tiff" },
+  tif: { ext: "tif", mime: "image/tiff" },
+  gif: { ext: "gif", mime: "image/gif" }
+};
+function outputFormat(sourceFormat) {
+  const key = String(sourceFormat || "").toLowerCase();
+  const info = FORMAT_INFO[key];
+  if (!info) throw new Error(`Formato de imagen no compatible: ${key || "desconocido"}`);
+  return { key: key === "jpg" ? "jpeg" : key === "tif" ? "tiff" : key, ...info };
+}
+function makeHeaders(filename, format, download) {
+  const safe = String(filename || "fotografia").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 90) || "fotografia";
+  return {
+    "Content-Type": format.mime,
+    "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${safe}.${format.ext}"; filename*=UTF-8''${encodeURIComponent(`${safe}.${format.ext}`)}`,
+    "X-Image-Format": format.ext,
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Expose-Headers": "Content-Disposition, X-Image-Format",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": download ? "no-store, no-cache, must-revalidate" : "public, max-age=3600, s-maxage=86400"
+  };
+}
+function brandedError(message) {
+  const safeMessage = String(message || "No se pudo preparar la fotografía").replace(/[<>&"]/g, c => ({ "<":"&lt;", ">":"&gt;", "&":"&amp;", '"':"&quot;" }[c]));
+  return `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TuFotoEnFoco · Descarga</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#09090b;color:#f4f4f5;font-family:Arial,sans-serif;padding:24px;box-sizing:border-box"><main style="max-width:440px;text-align:center;border:1px solid #3f3f46;border-radius:18px;background:#121212;padding:30px;box-shadow:0 20px 60px #0008"><div style="font-size:34px;color:#d6b36a;margin-bottom:12px">!</div><h1 style="font-size:21px;margin:0 0 12px">No se pudo preparar la fotografía</h1><p style="font-size:14px;line-height:1.6;color:#d4d4d8;margin:0 0 16px">${safeMessage}</p><p style="font-size:11px;color:#a1a1aa;margin:0">TuFotoEnFoco · El instante pasa, la emoción se queda</p></main></body></html>`;
+}
+async function prepareImage(input, watermark) {
+  const metadata = await sharp(input, { animated: false, limitInputPixels: 40000000 }).metadata();
+  if (!metadata.width || !metadata.height) throw new Error("El archivo recibido no es una imagen válida");
+  const format = outputFormat(metadata.format);
+  let pipeline = sharp(input, { animated: false, limitInputPixels: 40000000 }).rotate();
+  if (watermark) {
+    const oriented = await sharp(input, { animated: false, limitInputPixels: 40000000 }).rotate().metadata();
+    const logoWidth = Math.max(1, Math.round(oriented.width * 0.70));
+    const logoBuffer = await sharp(LOGO).resize({ width: logoWidth, fit: "inside", withoutEnlargement: true }).png().toBuffer();
     const logoMeta = await sharp(logoBuffer).metadata();
-    const overlaySvg = Buffer.from(
-      `<svg width="${logoMeta.width}" height="${logoMeta.height}" xmlns="http://www.w3.org/2000/svg"><image href="data:image/png;base64,${logoBuffer.toString("base64")}" width="${logoMeta.width}" height="${logoMeta.height}" opacity="0.30"/></svg>`
-    );
-    const overlay = await sharp(overlaySvg).png().toBuffer();
+    const svg = Buffer.from(`<svg width="${logoMeta.width}" height="${logoMeta.height}" xmlns="http://www.w3.org/2000/svg"><image href="data:image/png;base64,${logoBuffer.toString("base64")}" width="${logoMeta.width}" height="${logoMeta.height}" opacity="0.30"/></svg>`);
+    const overlay = await sharp(svg).png().toBuffer();
+    pipeline = pipeline.composite([{ input: overlay, left: Math.max(0, Math.round((oriented.width - logoMeta.width) / 2)), top: Math.max(0, Math.round((oriented.height - logoMeta.height) / 2)) }]);
+  }
+  switch (format.key) {
+    case "jpeg": pipeline = pipeline.jpeg({ quality: 90, mozjpeg: true }); break;
+    case "png": pipeline = pipeline.png({ compressionLevel: 8, adaptiveFiltering: true }); break;
+    case "webp": pipeline = pipeline.webp({ quality: 90, effort: 4 }); break;
+    case "avif": pipeline = pipeline.avif({ quality: 85, effort: 4 }); break;
+    case "tiff": pipeline = pipeline.tiff({ quality: 90, compression: "lzw" }); break;
+    case "gif": pipeline = pipeline.gif({ effort: 7 }); break;
+    default: throw new Error("Formato de imagen no compatible");
+  }
+  return { stream: Readable.toWeb(pipeline), format };
+}
 
-    const left = Math.max(0, Math.round((metadata.width - (logoMeta.width || logoWidth)) / 2));
-    const top = Math.max(0, Math.round((metadata.height - (logoMeta.height || 1)) / 2));
-
-    processed = processed.composite([{ input: overlay, left, top }]);
+export default async (request) => {
+  const q = new URL(request.url).searchParams;
+  if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  const view = q.get("view") === "1";
+  try {
+    const encoded = q.get("url64"); let source = q.get("url");
+    if (encoded) {
+      try { source = Buffer.from(encoded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"); }
+      catch { return new Response("URL codificada no válida", { status: 400 }); }
     }
-    const outputStream = Readable.toWeb(processed.jpeg({ quality: 90, mozjpeg: true }));
-
-    return new Response(outputStream, {
-      status: 200,
-      headers: {
-        "Content-Type": "image/jpeg",
-        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${filename}.jpg"`,
-        "Cache-Control": download ? "no-store, no-cache, must-revalidate" : "public, max-age=3600, s-maxage=86400",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "X-Content-Type-Options": "nosniff"
-      }
-    });
+    if (!source) return new Response("Falta la URL de la imagen", { status: 400 });
+    const imageUrl = new URL(source);
+    if (imageUrl.hostname.toLowerCase() === BUCKET_HOST && imageUrl.pathname.startsWith(BUCKET_PREFIX)) return new Response("Origen de imagen no permitido en esta función", { status: 403 });
+    const upstream = await descargarImagenPublica(imageUrl);
+    if (!upstream.ok) throw new Error(`El servidor de imágenes respondió HTTP ${upstream.status}`);
+    const length = Number(upstream.headers.get("content-length") || 0);
+    if (length > MAX_INPUT_BYTES) throw new Error("La fotografía supera el tamaño permitido");
+    const input = Buffer.from(await upstream.arrayBuffer());
+    if (!input.length || input.length > MAX_INPUT_BYTES) throw new Error("La fotografía está vacía o supera el tamaño permitido");
+    const { stream, format } = await prepareImage(input, q.get("watermark") === "1");
+    return new Response(stream, { status: 200, headers: makeHeaders(q.get("filename") || "fotografia", format, q.get("download") === "1" && !view) });
   } catch (error) {
-    console.error("Error procesando imagen:", error);
-    return new Response("Error procesando la imagen", { status: 500 });
+    console.error("Error procesando imagen externa:", error);
+    if (view) return new Response(brandedError(error.message), { status: 502, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+    return new Response(error.message || "No se pudo preparar la fotografía", { status: 502, headers: { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*", "Cache-Control": "no-store" } });
   }
 };

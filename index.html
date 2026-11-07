@@ -899,27 +899,46 @@
             const url=arrayFotosActuales[indexFotoActual]; if(!url)return;
             const watermark=eventoTieneMarcaAgua(eventoModalActual);
             let endpoint='imagen-externa';
-            try { const parsed=new URL(url); if(parsed.protocol==='https:' && parsed.hostname.toLowerCase()==='f003.backblazeb2.com' && parsed.pathname.toLowerCase().startsWith('/file/tufotoenfocogaleria/')) endpoint='imagen'; }
-            catch(_) { mostrarAvisoDescarga(); return; }
+            try {
+                const parsed=new URL(url);
+                if(parsed.protocol==='https:' && parsed.hostname.toLowerCase()==='f003.backblazeb2.com' && parsed.pathname.toLowerCase().startsWith('/file/tufotoenfocogaleria/')) endpoint='imagen';
+            } catch(_) { mostrarAvisoDescarga(); return; }
+
             const encoded=btoa(unescape(encodeURIComponent(url))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');
             const nombre=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}`.replace(/[^a-zA-Z0-9_-]/g,'_');
-            const downloadUrl=`${NETLIFY_IMAGE_BASE}${endpoint}?download=1&watermark=${watermark?'1':'0'}&filename=${encodeURIComponent(nombre)}&url64=${encoded}`;
-            // Abrimos una pestaña de reserva durante el gesto del usuario. Se cierra si la descarga funciona;
-            // si falla, sirve como alternativa directa al endpoint que devuelve Content-Disposition: attachment.
+            const baseUrl=`${NETLIFY_IMAGE_BASE}${endpoint}?watermark=${watermark?'1':'0'}&filename=${encodeURIComponent(nombre)}&url64=${encoded}`;
+            const downloadUrl=`${baseUrl}&download=1`;
+            const viewUrl=`${baseUrl}&view=1`;
+
+            // Reservamos la pestaña durante el clic del usuario. Si la descarga falla,
+            // la reutilizamos para mostrar la fotografía procesada por Netlify.
             const fallback=window.open('about:blank','_blank');
             try {
                 const response=await fetch(downloadUrl,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'});
                 if(!response.ok) throw new Error(`HTTP ${response.status}`);
                 const blob=await response.blob();
-                if(!blob.size || (blob.type && blob.type!=='image/jpeg')) throw new Error('La respuesta no es un JPG válido');
-                const objectUrl=URL.createObjectURL(blob),a=document.createElement('a');
-                a.href=objectUrl; a.download=`${nombre}.jpg`; a.style.display='none'; document.body.appendChild(a); a.click(); a.remove();
+                const mime=(response.headers.get('Content-Type')||blob.type||'').split(';')[0].toLowerCase();
+                if(!blob.size || !mime.startsWith('image/')) throw new Error('Netlify no devolvió una imagen válida');
+
+                const extHeader=(response.headers.get('X-Image-Format')||'').toLowerCase();
+                const extByMime={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/avif':'avif','image/tiff':'tif','image/gif':'gif'};
+                const extension=extHeader||extByMime[mime];
+                if(!extension) throw new Error(`Formato de imagen no reconocido: ${mime}`);
+
+                const objectUrl=URL.createObjectURL(blob);
+                const a=document.createElement('a');
+                a.href=objectUrl; a.download=`${nombre}.${extension}`; a.style.display='none';
+                document.body.appendChild(a); a.click(); a.remove();
                 setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
                 if(fallback && !fallback.closed) fallback.close();
             } catch(error) {
-                console.error('Error en descarga JPG:',error);
-                if(fallback && !fallback.closed) fallback.close();
-                mostrarAvisoDescarga(downloadUrl);
+                console.error('Error en descarga de fotografía:',error);
+                if(fallback && !fallback.closed) {
+                    try { fallback.location.replace(viewUrl); }
+                    catch(_) { mostrarAvisoDescarga(viewUrl); }
+                } else {
+                    mostrarAvisoDescarga(viewUrl);
+                }
             }
         }
         function mostrarAvisoDescarga(urlAlternativa=''){
@@ -927,10 +946,13 @@
             if(!modal){
                 modal=document.createElement('div'); modal.id='aviso-descarga-tufoto';
                 modal.className='fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4';
-                modal.innerHTML=`<div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 text-center shadow-2xl"><div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-brand-accent text-brand-accent text-2xl">!</div><h3 class="text-white text-lg font-bold">No se pudo iniciar la descarga</h3><p class="mt-2 text-sm leading-relaxed text-zinc-300">La descarga automática no ha funcionado. Puedes abrir la fotografía preparada en JPG desde este enlace.</p><div class="mt-5 flex flex-col gap-2"><a id="aviso-descarga-abrir" class="rounded-lg bg-brand-accent px-4 py-3 text-sm font-bold uppercase text-black" target="_blank" rel="noopener">Abrir fotografía JPG</a><button id="aviso-descarga-cerrar" class="rounded-lg border border-zinc-700 px-4 py-3 text-sm font-bold text-white">Cerrar</button></div></div>`;
-                document.body.appendChild(modal); modal.querySelector('#aviso-descarga-cerrar').addEventListener('click',()=>modal.remove());
+                modal.innerHTML=`<div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 text-center shadow-2xl"><div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-brand-accent text-brand-accent text-2xl">!</div><h3 class="text-white text-lg font-bold">No se pudo iniciar la descarga</h3><p class="mt-2 text-sm leading-relaxed text-zinc-300">No hemos podido descargar la fotografía automáticamente. Puedes abrir la versión preparada por TuFotoEnFoco en una pestaña nueva.</p><div class="mt-5 flex flex-col gap-2"><a id="aviso-descarga-abrir" class="rounded-lg bg-brand-accent px-4 py-3 text-sm font-bold uppercase text-black" target="_blank" rel="noopener">Abrir fotografía</a><button id="aviso-descarga-cerrar" class="rounded-lg border border-zinc-700 px-4 py-3 text-sm font-bold text-white">Cerrar</button></div></div>`;
+                document.body.appendChild(modal);
+                modal.querySelector('#aviso-descarga-cerrar').addEventListener('click',()=>modal.remove());
             }
-            const link=modal.querySelector('#aviso-descarga-abrir'); if(urlAlternativa){link.href=urlAlternativa;link.classList.remove('hidden');}else{link.classList.add('hidden');}
+            const link=modal.querySelector('#aviso-descarga-abrir');
+            if(urlAlternativa){link.href=urlAlternativa;link.classList.remove('hidden');}
+            else{link.classList.add('hidden');}
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
