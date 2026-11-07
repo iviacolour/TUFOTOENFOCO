@@ -638,22 +638,6 @@
             return `${NETLIFY_IMAGE_BASE}${endpoint}?watermark=1&url64=${encodedSource}`;
         }
 
-        function urlDescargaFoto(url, evento) {
-            const source = String(url || '').trim();
-            if (!source || !/^https?:\/\//i.test(source)) return source;
-            let endpoint = 'imagen-externa';
-            try {
-                const parsed = new URL(source);
-                if (parsed.hostname.toLowerCase() === 'f003.backblazeb2.com' && parsed.pathname.toLowerCase().startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
-            } catch (_) { return source; }
-            const encodedSource = btoa(unescape(encodeURIComponent(source)))
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=+$/g, '');
-            const watermark = eventoTieneMarcaAgua(evento) ? '&watermark=1' : '';
-            return `${NETLIFY_IMAGE_BASE}${endpoint}?download=1${watermark}&url64=${encodedSource}`;
-        }
-
 
         function aplicarFondosAlternos() {
             const sections = document.querySelectorAll('section.alternating-section');
@@ -911,67 +895,43 @@
                 <button type="button" onclick="irAFotoModal(${i})" aria-label="Ver fotografía ${i+1}" class="gal-thumb w-24 h-24 lg:w-full lg:h-32 rounded-lg overflow-hidden border-2 ${i===0?'border-brand-accent opacity-100':'border-transparent opacity-50'} cursor-pointer hover:opacity-100 transition-all flex-shrink-0 relative group bg-[#121212]">
                 <img src="${urlImagenGaleria(url,eventoModalActual)}" alt="Miniatura ${i+1}" class="w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${placeholderImagen}'"><span class="absolute inset-0 bg-black/20 group-hover:bg-transparent pointer-events-none"></span></button>`).join('');
         }
-        function extensionDesdeMime(mime, urlOriginal) {
-            const tipos = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/avif': 'avif', 'image/tiff': 'tif', 'image/gif': 'gif', 'image/heif': 'heif' };
-            const tipo = String(mime || '').split(';')[0].trim().toLowerCase();
-            if (tipos[tipo]) return tipos[tipo];
-            try { return (new URL(urlOriginal)).pathname.match(/\.([^.\/]+)$/)?.[1]?.toLowerCase() || 'jpg'; }
-            catch (_) { return 'jpg'; }
-        }
-
-        function mostrarAvisoDescarga(fallbackUrl) {
-            document.getElementById('aviso-descarga-tufoto')?.remove();
-            const aviso = document.createElement('div');
-            aviso.id = 'aviso-descarga-tufoto';
-            aviso.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-lg rounded-xl border border-brand-accent/50 bg-zinc-950 text-white shadow-2xl p-5';
-            aviso.innerHTML = `
-                <div class="flex items-start gap-3">
-                    <div class="mt-0.5 text-brand-accent text-xl" aria-hidden="true">ⓘ</div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-sm font-bold tracking-wide">TuFotoEnFoco · Descarga alternativa</p>
-                        <p class="mt-1 text-sm leading-relaxed text-zinc-300">No hemos podido iniciar la descarga automática. Puedes abrir la fotografía en una pestaña nueva y guardarla desde allí.</p>
-                        <div class="mt-4 flex flex-wrap gap-3">
-                            <a href="${fallbackUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-md bg-brand-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-black hover:bg-white transition-colors">Abrir fotografía</a>
-                            <button type="button" class="rounded-md border border-zinc-700 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 hover:border-white hover:text-white">Cerrar</button>
-                        </div>
-                    </div>
-                </div>`;
-            aviso.querySelector('button').addEventListener('click', () => aviso.remove());
-            document.body.appendChild(aviso);
-        }
-
         async function descargarFotoSeleccionada(){
-            const url=arrayFotosActuales[indexFotoActual];
-            if(!url) return;
-            const llevaMarca=eventoTieneMarcaAgua(eventoModalActual);
-            const downloadUrl=urlDescargaFoto(url,eventoModalActual);
-            // Abrimos una pestaña vacía durante el gesto del usuario para poder usarla
-            // como alternativa si el navegador o el servidor bloquean la descarga.
-            const pestañaAlternativa=window.open('about:blank','_blank');
-            const fallbackUrl=llevaMarca ? urlImagenGaleria(url,eventoModalActual) : url;
+            const url=arrayFotosActuales[indexFotoActual]; if(!url)return;
+            const watermark=eventoTieneMarcaAgua(eventoModalActual);
+            let endpoint='imagen-externa';
+            try { const parsed=new URL(url); if(parsed.protocol==='https:' && parsed.hostname.toLowerCase()==='f003.backblazeb2.com' && parsed.pathname.toLowerCase().startsWith('/file/tufotoenfocogaleria/')) endpoint='imagen'; }
+            catch(_) { mostrarAvisoDescarga(); return; }
+            const encoded=btoa(unescape(encodeURIComponent(url))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');
+            const nombre=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+            const downloadUrl=`${NETLIFY_IMAGE_BASE}${endpoint}?download=1&watermark=${watermark?'1':'0'}&filename=${encodeURIComponent(nombre)}&url64=${encoded}`;
+            // Abrimos una pestaña de reserva durante el gesto del usuario. Se cierra si la descarga funciona;
+            // si falla, sirve como alternativa directa al endpoint que devuelve Content-Disposition: attachment.
+            const fallback=window.open('about:blank','_blank');
             try {
-                const r=await fetch(downloadUrl,{cache:'no-store'});
-                if(!r.ok) throw new Error(`HTTP ${r.status}`);
-                const blob=await r.blob();
-                if(!blob.size || String(blob.type||'').split(';')[0].trim().toLowerCase()!=='image/jpeg') throw new Error('El servidor no ha devuelto una fotografía JPG válida');
-                const extension="jpg";
-                const objectUrl=URL.createObjectURL(blob);
-                const a=document.createElement('a');
-                a.href=objectUrl;
-                a.download=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}.${extension}`;
-                document.body.appendChild(a);a.click();a.remove();
-                setTimeout(()=>URL.revokeObjectURL(objectUrl),10000);
-                if(pestañaAlternativa && !pestañaAlternativa.closed) pestañaAlternativa.close();
-            } catch(e) {
-                console.error('No se pudo descargar la fotografía:',e);
-                if(pestañaAlternativa && !pestañaAlternativa.closed) {
-                    pestañaAlternativa.location.replace(fallbackUrl);
-                } else {
-                    mostrarAvisoDescarga(fallbackUrl);
-                }
+                const response=await fetch(downloadUrl,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit'});
+                if(!response.ok) throw new Error(`HTTP ${response.status}`);
+                const blob=await response.blob();
+                if(!blob.size || (blob.type && blob.type!=='image/jpeg')) throw new Error('La respuesta no es un JPG válido');
+                const objectUrl=URL.createObjectURL(blob),a=document.createElement('a');
+                a.href=objectUrl; a.download=`${nombre}.jpg`; a.style.display='none'; document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);
+                if(fallback && !fallback.closed) fallback.close();
+            } catch(error) {
+                console.error('Error en descarga JPG:',error);
+                if(fallback && !fallback.closed) fallback.close();
+                mostrarAvisoDescarga(downloadUrl);
             }
         }
-
+        function mostrarAvisoDescarga(urlAlternativa=''){
+            let modal=document.getElementById('aviso-descarga-tufoto');
+            if(!modal){
+                modal=document.createElement('div'); modal.id='aviso-descarga-tufoto';
+                modal.className='fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4';
+                modal.innerHTML=`<div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 text-center shadow-2xl"><div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-brand-accent text-brand-accent text-2xl">!</div><h3 class="text-white text-lg font-bold">No se pudo iniciar la descarga</h3><p class="mt-2 text-sm leading-relaxed text-zinc-300">La descarga automática no ha funcionado. Puedes abrir la fotografía preparada en JPG desde este enlace.</p><div class="mt-5 flex flex-col gap-2"><a id="aviso-descarga-abrir" class="rounded-lg bg-brand-accent px-4 py-3 text-sm font-bold uppercase text-black" target="_blank" rel="noopener">Abrir fotografía JPG</a><button id="aviso-descarga-cerrar" class="rounded-lg border border-zinc-700 px-4 py-3 text-sm font-bold text-white">Cerrar</button></div></div>`;
+                document.body.appendChild(modal); modal.querySelector('#aviso-descarga-cerrar').addEventListener('click',()=>modal.remove());
+            }
+            const link=modal.querySelector('#aviso-descarga-abrir'); if(urlAlternativa){link.href=urlAlternativa;link.classList.remove('hidden');}else{link.classList.add('hidden');}
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             // Carga el formulario desde un único archivo compartido por toda la web.
@@ -1275,7 +1235,7 @@
             const cat=categoriaEfectiva(ev);const categoryHref=['sin balón','sin balon'].includes(normalizarCategoria(cat))?'sin-balon.html':normalizarCategoria(cat)==='cultura'?'cultura.html':'categoria.html?cat='+encodeURIComponent(cat);
             const photos=await fetchFotosDesdeBackblaze(id);const all=photos.length?photos:(ev.Foto_Cabecera?[ev.Foto_Cabecera]:[]);const total=Number(ev.Total_Fotos)||all.length||0;let page=0,selected=0;const perPage=16;
             const same=gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const idx=same.findIndex(g=>String(g.ID_Evento)===id);const next=same[idx+1];
-            root.innerHTML=`<section class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen"><nav class="text-sm text-gray-400 mb-5"><a href="galerias.html?tipo=categorias" class="hover:text-brand-accent">Categorías</a><span class="mx-2">/</span><a href="${categoryHref}" class="hover:text-brand-accent">${cat}</a></nav><h1 class="text-3xl md:text-5xl font-black text-white">${ev.Titulo||''}</h1><div class="text-gray-400 mt-3 flex flex-wrap gap-x-4 gap-y-1"><span>${ev.Fecha||''}</span><span>${ev.Lugar||''}</span><span>${total} fotografías</span></div><p class="text-gray-300 text-base md:text-lg leading-relaxed mt-5 max-w-5xl">${ev.Resultados||ev.Descripcion_Larga||''}</p><div class="mt-8 bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[65vh]"><img id="album-main-photo" src="${urlImagenGaleria(all[0]||svgCamara,ev)}" alt="${ev.Titulo||'Fotografía del álbum'}" class="max-w-full max-h-[75vh] object-contain"></div><div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-zinc-800 py-4">${/^https?:\/\//i.test(String(ev.Link_Compra||''))?`<p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos.</p><a href="${ev.Link_Compra}" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white">Tu recuerdo sin logo · descárgalo aquí</a>`:''}</div><div class="flex flex-wrap items-center justify-between gap-3 mt-7"><p id="album-counter" class="text-sm text-gray-300 font-semibold">${Math.min(perPage,total)} de ${total} archivos</p><div class="flex gap-2"><button id="album-prev" class="px-5 py-2 rounded-md border border-zinc-700 text-white disabled:opacity-30">Atrás</button><button id="album-next" class="px-5 py-2 rounded-md bg-brand-accent text-black font-bold disabled:opacity-30">Siguiente</button></div></div><div id="album-thumbs" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5"></div><div class="flex flex-wrap justify-between gap-3 mt-10 border-t border-zinc-800 pt-6"><a href="${categoryHref}" class="px-5 py-3 border border-zinc-700 rounded-md text-white hover:border-brand-accent">Volver a la categoría</a>${next?`<a href="album.html?id=${codificarIdAlbum(next.ID_Evento)}" class="px-5 py-3 bg-brand-accent text-black font-bold rounded-md">Siguiente evento</a>`:'<span></span>'}</div></section>`;
+            root.innerHTML=`<section class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen"><nav class="text-sm text-gray-400 mb-5"><a href="galerias.html?tipo=categorias" class="hover:text-brand-accent">Categorías</a><span class="mx-2">/</span><a href="${categoryHref}" class="hover:text-brand-accent">${cat}</a></nav><h1 class="text-3xl md:text-5xl font-black text-white">${ev.Titulo||''}</h1><div class="text-gray-400 mt-3 flex flex-wrap gap-x-4 gap-y-1"><span>${ev.Fecha||''}</span><span>${ev.Lugar||''}</span><span>${total} fotografías</span></div><p class="text-gray-300 text-base md:text-lg leading-relaxed mt-5 max-w-5xl">${ev.Resultados||ev.Descripcion_Larga||''}</p><div class="mt-8 bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[65vh]"><img id="album-main-photo" src="${urlImagenGaleria(all[0]||svgCamara,ev)}" alt="${ev.Titulo||'Fotografía del álbum'}" class="max-w-full max-h-[75vh] object-contain"></div><div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-zinc-800 py-4"><p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos.</p>${/^https?:\/\//i.test(String(ev.Link_Compra||''))?`<a href="${ev.Link_Compra}" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white">Tu recuerdo sin logo · descárgalo aquí</a>`:''}</div><div class="flex flex-wrap items-center justify-between gap-3 mt-7"><p id="album-counter" class="text-sm text-gray-300 font-semibold">${Math.min(perPage,total)} de ${total} archivos</p><div class="flex gap-2"><button id="album-prev" class="px-5 py-2 rounded-md border border-zinc-700 text-white disabled:opacity-30">Atrás</button><button id="album-next" class="px-5 py-2 rounded-md bg-brand-accent text-black font-bold disabled:opacity-30">Siguiente</button></div></div><div id="album-thumbs" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5"></div><div class="flex flex-wrap justify-between gap-3 mt-10 border-t border-zinc-800 pt-6"><a href="${categoryHref}" class="px-5 py-3 border border-zinc-700 rounded-md text-white hover:border-brand-accent">Volver a la categoría</a>${next?`<a href="album.html?id=${codificarIdAlbum(next.ID_Evento)}" class="px-5 py-3 bg-brand-accent text-black font-bold rounded-md">Siguiente evento</a>`:'<span></span>'}</div></section>`;
             const draw=()=>{const start=page*perPage,end=Math.min(start+perPage,all.length);document.getElementById('album-counter').textContent=`${Math.min((page+1)*perPage,total)} de ${total} archivos`;document.getElementById('album-thumbs').innerHTML=all.slice(start,end).map((url,i)=>`<button type="button" class="aspect-square rounded-lg overflow-hidden border-2 ${start+i===selected?'border-brand-accent':'border-transparent'}" data-photo="${start+i}"><img src="${urlImagenGaleria(url,ev)}" loading="lazy" class="w-full h-full object-cover"></button>`).join('');document.getElementById('album-prev').disabled=page===0;document.getElementById('album-next').disabled=end>=all.length;document.querySelectorAll('#album-thumbs button').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.photo);document.getElementById('album-main-photo').src=urlImagenGaleria(all[selected],ev);draw();}));};
             document.getElementById('album-prev').addEventListener('click',()=>{if(page>0){page--;draw();}});document.getElementById('album-next').addEventListener('click',()=>{if((page+1)*perPage<all.length){page++;selected=page*perPage;document.getElementById('album-main-photo').src=urlImagenGaleria(all[selected],ev);draw();}});draw();
         }

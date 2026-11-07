@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { Readable } from "node:stream";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
@@ -46,27 +47,6 @@ async function descargarImagenPublica(initialUrl) {
   throw new Error('No se pudo descargar la imagen');
 }
 
-function extensionFromFormat(format) {
-  const map = { jpeg: "jpg", jpg: "jpg", png: "png", webp: "webp", avif: "avif", tiff: "tif", gif: "gif", heif: "heif" };
-  return map[String(format || "").toLowerCase()] || "jpg";
-}
-function contentTypeFromFormat(format, fallback = "application/octet-stream") {
-  const map = { jpeg: "image/jpeg", jpg: "image/jpeg", png: "image/png", webp: "image/webp", avif: "image/avif", tiff: "image/tiff", gif: "image/gif", heif: "image/heif" };
-  return map[String(format || "").toLowerCase()] || fallback;
-}
-function encodeImageInOriginalFormat(pipeline, format) {
-  switch (String(format || "").toLowerCase()) {
-    case "jpeg": case "jpg": return pipeline.jpeg({ quality: 92, mozjpeg: true });
-    case "png": return pipeline.png({ compressionLevel: 9 });
-    case "webp": return pipeline.webp({ quality: 90 });
-    case "avif": return pipeline.avif({ quality: 85 });
-    case "tiff": return pipeline.tiff({ compression: "lzw" });
-    case "gif": return pipeline.gif();
-    case "heif": return pipeline.heif({ quality: 85 });
-    default: return pipeline.jpeg({ quality: 92, mozjpeg: true });
-  }
-}
-
 export default async (request) => {
   try {
     const requestUrl = new URL(request.url);
@@ -84,9 +64,10 @@ export default async (request) => {
     }
     const watermark = requestUrl.searchParams.get("watermark") === "1";
     const download = requestUrl.searchParams.get("download") === "1";
+    const filename = (requestUrl.searchParams.get("filename") || "fotografia").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 90) || "fotografia";
 
-    if (!source || (!watermark && !download)) {
-      return new Response("Falta url o una operación válida", { status: 400 });
+    if (!source) {
+      return new Response("Falta la URL de la imagen", { status: 400 });
     }
 
     let imageUrl;
@@ -103,9 +84,10 @@ export default async (request) => {
       return new Response("No se pudo obtener la imagen original", { status: upstream.status });
     }
 
-    // Algunos servidores de imágenes responden con application/octet-stream;
-    // la validación real del formato se realiza con Sharp más abajo.
     const contentType = (upstream.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.startsWith("image/")) {
+      return new Response("El recurso no es una imagen", { status: 415 });
+    }
 
     const declaredLength = Number(upstream.headers.get("content-length") || 0);
     if (declaredLength > MAX_INPUT_BYTES) {
@@ -117,36 +99,14 @@ export default async (request) => {
       return new Response("Imagen demasiado grande", { status: 413 });
     }
 
-    let rotatedInput;
-    let metadata;
-    try {
-      rotatedInput = await sharp(input, { animated: false, limitInputPixels: 40000000 })
-        .rotate()
-        .jpeg({ quality: 92, mozjpeg: true })
-        .toBuffer();
-      metadata = await sharp(rotatedInput, { limitInputPixels: 40000000 }).metadata();
-    } catch (_) {
-      return new Response("El archivo de origen no contiene una imagen compatible", { status: 415 });
-    }
+    const metadata = await sharp(input, { animated: false, limitInputPixels: 40000000 }).metadata();
     if (!metadata.width || !metadata.height) {
       return new Response("Formato de imagen no compatible", { status: 415 });
     }
 
-    if (download && !watermark) {
-      return new Response(rotatedInput, {
-        status: 200,
-        headers: {
-          "Content-Type": "image/jpeg",
-          "Content-Disposition": 'attachment; filename="fotografia.jpg"',
-          "Cache-Control": "no-store, no-cache, must-revalidate",
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Expose-Headers": "Content-Disposition, Content-Type",
-          "X-Content-Type-Options": "nosniff"
-        }
-      });
-    }
-
-    // Logo centrado: 70% del ancho de la imagen y 30% de opacidad.
+    // La marca de agua se aplica solo cuando la galería la tiene activada.
+    let processed = sharp(input, { animated: false, limitInputPixels: 40000000 }).rotate();
+    if (watermark) {
     const logoWidth = Math.max(1, Math.round(metadata.width * 0.70));
     const logoBuffer = await sharp(LOGO)
       .resize({ width: logoWidth, fit: "inside", withoutEnlargement: true })
@@ -162,22 +122,18 @@ export default async (request) => {
     const left = Math.max(0, Math.round((metadata.width - (logoMeta.width || logoWidth)) / 2));
     const top = Math.max(0, Math.round((metadata.height - (logoMeta.height || 1)) / 2));
 
-    const output = await encodeImageInOriginalFormat(
-      sharp(rotatedInput, { animated: false, limitInputPixels: 40000000 })
-        .composite([{ input: overlay, left, top }]),
-      "jpeg"
-    ).toBuffer();
-    const outputType = "image/jpeg";
-    const outputExtension = "jpg";
+    processed = processed.composite([{ input: overlay, left, top }]);
+    }
+    const outputStream = Readable.toWeb(processed.jpeg({ quality: 90, mozjpeg: true }));
 
-    return new Response(output, {
+    return new Response(outputStream, {
       status: 200,
       headers: {
-        "Content-Type": outputType,
-        ...(download ? { "Content-Disposition": 'attachment; filename="fotografia-con-marca-de-agua.jpg"' } : {}),
-        "Access-Control-Expose-Headers": "Content-Disposition, Content-Type",
-        "Cache-Control": download ? "no-store" : "public, max-age=3600, s-maxage=86400",
+        "Content-Type": "image/jpeg",
+        "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${filename}.jpg"`,
+        "Cache-Control": download ? "no-store, no-cache, must-revalidate" : "public, max-age=3600, s-maxage=86400",
         "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
         "X-Content-Type-Options": "nosniff"
       }
     });
