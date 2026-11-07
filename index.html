@@ -234,7 +234,8 @@
   position: relative !important;
   z-index: 2 !important;
   isolation: isolate;
-  background-color: #09090b; /* JS lo sincroniza con el fondo alterno de la sección */
+  background-color: #09090b; /* Fondo opaco; JS aplica el color alterno dinámico */
+  opacity: 1;
   cursor: pointer;
   transform-origin: center;
   transition: transform .24s cubic-bezier(.2,.75,.25,1.2);
@@ -255,66 +256,70 @@
   will-change: transform, opacity;
 }
 .caricature-intro-wrap > .caricature-pop-image {
-  right: clamp(6px, 1.5vw, 16px);
+  right: clamp(10px, 1.8vw, 20px);
   bottom: 100%;
   width: clamp(95px, 13.5vw, 165px);
-  transform: translateY(100%) scale(.94);
+  transform: translateY(15%) scale(1);
   transform-origin: 50% 100%;
 }
 .caricature-footer-wrap > .caricature-pop-image {
   left: 50%;
   bottom: 100%;
   width: clamp(82px, 11.5vw, 143px);
-  transform: translate(-50%, 100%) scale(.94);
+  transform: translate(-50%, 15%) scale(1);
   transform-origin: 50% 100%;
 }
 /* El propio panel/footer tiene una capa superior opaca que oculta la parte solapada. */
-.caricature-intro-wrap > .caricature-trigger-intro { z-index: 2 !important; }
+.caricature-intro-wrap > .caricature-trigger-intro { z-index: 2 !important; position:relative !important; background-color:#09090b; }
 #main-footer { position: relative; z-index: 2 !important; overflow: visible !important; }
 .caricature-trigger-intro .caricature-pop-image.is-visible,
 .caricature-intro-wrap > .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpCard 1.5s cubic-bezier(.2,.72,.25,1) both;
+  animation: caricatureSpringUpCard 2.05s cubic-bezier(.2,.78,.22,1) both;
 }
 .caricature-footer-wrap > .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpFooter 1.5s cubic-bezier(.2,.72,.25,1) both;
+  animation: caricatureSpringUpFooter 2.05s cubic-bezier(.2,.78,.22,1) both;
 }
 .caricature-intro-wrap > .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownCard .85s cubic-bezier(.55,0,.8,.35) both;
+  animation: caricatureSpringDownCard 1.05s cubic-bezier(.45,0,.75,.4) both;
 }
 .caricature-footer-wrap > .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownFooter .85s cubic-bezier(.55,0,.8,.35) both;
+  animation: caricatureSpringDownFooter 1.05s cubic-bezier(.45,0,.75,.4) both;
 }
-/* El movimiento es siempre hacia arriba hasta el borde, sin rebasar la posición final. */
+/* Entrada elástica controlada: asoma un 95% como máximo y termina con un 85% visible. */
 @keyframes caricatureSpringUpCard {
-  0% { opacity:0; transform:translateY(100%) scale(.82) }
-  58% { opacity:1; transform:translateY(24%) scale(1.025) }
-  76% { opacity:1; transform:translateY(7%) scale(.985) }
-  89% { opacity:1; transform:translateY(2%) scale(1.008) }
-  100% { opacity:1; transform:translateY(0) scale(1) }
+  0%   { opacity:0; transform:translateY(100%) scale(.94) }
+  38%  { opacity:1; transform:translateY(5%) scale(1.015) }
+  54%  { opacity:1; transform:translateY(22%) scale(.985) }
+  68%  { opacity:1; transform:translateY(10%) scale(1.008) }
+  82%  { opacity:1; transform:translateY(17%) scale(.995) }
+  92%  { opacity:1; transform:translateY(13%) scale(1.003) }
+  100% { opacity:1; transform:translateY(15%) scale(1) }
 }
 @keyframes caricatureSpringUpFooter {
-  0% { opacity:0; transform:translate(-50%,100%) scale(.82) }
-  58% { opacity:1; transform:translate(-50%,24%) scale(1.025) }
-  76% { opacity:1; transform:translate(-50%,7%) scale(.985) }
-  89% { opacity:1; transform:translate(-50%,2%) scale(1.008) }
-  100% { opacity:1; transform:translate(-50%,0) scale(1) }
+  0%   { opacity:0; transform:translate(-50%,100%) scale(.94) }
+  38%  { opacity:1; transform:translate(-50%,5%) scale(1.015) }
+  54%  { opacity:1; transform:translate(-50%,22%) scale(.985) }
+  68%  { opacity:1; transform:translate(-50%,10%) scale(1.008) }
+  82%  { opacity:1; transform:translate(-50%,17%) scale(.995) }
+  92%  { opacity:1; transform:translate(-50%,13%) scale(1.003) }
+  100% { opacity:1; transform:translate(-50%,15%) scale(1) }
 }
 @keyframes caricatureSpringDownCard {
-  0% { opacity:1; transform:translateY(0) scale(1) }
-  35% { opacity:1; transform:translateY(18%) scale(.98) }
-  100% { opacity:0; transform:translateY(100%) scale(.82) }
+  0%   { opacity:1; transform:translateY(15%) scale(1) }
+  28%  { opacity:1; transform:translateY(8%) scale(1.01) }
+  100% { opacity:0; transform:translateY(100%) scale(.94) }
 }
 @keyframes caricatureSpringDownFooter {
-  0% { opacity:1; transform:translate(-50%,0) scale(1) }
-  35% { opacity:1; transform:translate(-50%,18%) scale(.98) }
-  100% { opacity:0; transform:translate(-50%,100%) scale(.82) }
+  0%   { opacity:1; transform:translate(-50%,15%) scale(1) }
+  28%  { opacity:1; transform:translate(-50%,8%) scale(1.01) }
+  100% { opacity:0; transform:translate(-50%,100%) scale(.94) }
 }
 @media(max-width:640px) {
- .caricature-intro-wrap > .caricature-pop-image {right:4px;width:min(34vw,122px)}
+ .caricature-intro-wrap > .caricature-pop-image {right:10px;width:min(34vw,122px)}
  .caricature-footer-wrap > .caricature-pop-image {width:min(33vw,122px)}
 }
 @media(prefers-reduced-motion:reduce) {
@@ -374,7 +379,7 @@
 
         <section class="alternating-section py-16 lg:py-24 border-b border-zinc-800 transition-colors duration-300">
             <div class="w-full max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="intro-copy-panel caricature-trigger caricature-trigger-intro box-border border border-white p-6 sm:p-8 lg:p-10 2xl:p-12 text-[clamp(0.95rem,1vw,1.125rem)] text-gray-200 leading-relaxed rounded-2xl shadow-none bg-black/20" role="button" tabindex="0" aria-expanded="false" aria-label="Mostrar caricatura de TUFOTOENFOCO">
+                <div class="intro-copy-panel caricature-trigger caricature-trigger-intro box-border border border-white p-6 sm:p-8 lg:p-10 2xl:p-12 text-[clamp(0.95rem,1vw,1.125rem)] text-gray-200 leading-relaxed rounded-2xl shadow-none" role="button" tabindex="0" aria-expanded="false" aria-label="Mostrar caricatura de TUFOTOENFOCO">
                     <ul class="pl-4 bullet-yellow space-y-4">
                         <li>En TUFOTO<span class="text-brand-highlight font-bold">ENFOCO</span> documento la pasión del deporte para transformarla en recuerdos imborrables.</li>
                         <li>Explora las galerías, encuéntrate en la acción y vuelve a sentir la emoción de cada instante.</li>
@@ -1384,6 +1389,19 @@
       trigger.parentNode.insertBefore(layer, trigger);
       layer.appendChild(image);
       layer.appendChild(trigger);
+      const syncIntroImagePosition = () => {
+        const layerRect = layer.getBoundingClientRect();
+        const triggerRect = trigger.getBoundingClientRect();
+        const rightInset = Math.max(0, layerRect.right - triggerRect.right) + 10;
+        image.style.right = `${rightInset}px`;
+      };
+      syncIntroImagePosition();
+      window.addEventListener('resize', syncIntroImagePosition, { passive: true });
+      if ('ResizeObserver' in window) {
+        const introResizeObserver = new ResizeObserver(syncIntroImagePosition);
+        introResizeObserver.observe(layer);
+        introResizeObserver.observe(trigger);
+      }
     }
     const setOpen = (open) => {
       trigger.setAttribute('aria-expanded', String(open));
