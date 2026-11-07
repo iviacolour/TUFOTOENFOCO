@@ -46,6 +46,27 @@ async function descargarImagenPublica(initialUrl) {
   throw new Error('No se pudo descargar la imagen');
 }
 
+function extensionFromFormat(format) {
+  const map = { jpeg: "jpg", jpg: "jpg", png: "png", webp: "webp", avif: "avif", tiff: "tif", gif: "gif", heif: "heif" };
+  return map[String(format || "").toLowerCase()] || "jpg";
+}
+function contentTypeFromFormat(format, fallback = "application/octet-stream") {
+  const map = { jpeg: "image/jpeg", jpg: "image/jpeg", png: "image/png", webp: "image/webp", avif: "image/avif", tiff: "image/tiff", gif: "image/gif", heif: "image/heif" };
+  return map[String(format || "").toLowerCase()] || fallback;
+}
+function encodeImageInOriginalFormat(pipeline, format) {
+  switch (String(format || "").toLowerCase()) {
+    case "jpeg": case "jpg": return pipeline.jpeg({ quality: 92, mozjpeg: true });
+    case "png": return pipeline.png({ compressionLevel: 9 });
+    case "webp": return pipeline.webp({ quality: 90 });
+    case "avif": return pipeline.avif({ quality: 85 });
+    case "tiff": return pipeline.tiff({ compression: "lzw" });
+    case "gif": return pipeline.gif();
+    case "heif": return pipeline.heif({ quality: 85 });
+    default: return pipeline.jpeg({ quality: 92, mozjpeg: true });
+  }
+}
+
 export default async (request) => {
   try {
     const requestUrl = new URL(request.url);
@@ -97,13 +118,18 @@ export default async (request) => {
       return new Response("Imagen demasiado grande", { status: 413 });
     }
 
-    // Descarga sin marca: devuelve el archivo original como adjunto, no como pestaña de imagen.
+    const metadata = await sharp(input, { animated: false, limitInputPixels: 40000000 }).metadata();
+    const originalFormat = metadata.format || "jpeg";
+    const originalExtension = extensionFromFormat(originalFormat);
+    const originalContentType = contentTypeFromFormat(originalFormat, contentType);
+
+    // Descarga sin marca: devuelve bytes originales, conservando el formato y la extensión.
     if (download && !watermark) {
       return new Response(input, {
         status: 200,
         headers: {
-          "Content-Type": contentType || "application/octet-stream",
-          "Content-Disposition": 'attachment; filename="fotografia-original"',
+          "Content-Type": originalContentType,
+          "Content-Disposition": `attachment; filename="fotografia-original.${originalExtension}"`,
           "Cache-Control": "no-store",
           "Access-Control-Allow-Origin": "*",
           "X-Content-Type-Options": "nosniff"
@@ -111,7 +137,6 @@ export default async (request) => {
       });
     }
 
-    const metadata = await sharp(input, { animated: false, limitInputPixels: 40000000 }).metadata();
     if (!metadata.width || !metadata.height) {
       return new Response("Formato de imagen no compatible", { status: 415 });
     }
@@ -132,16 +157,19 @@ export default async (request) => {
     const left = Math.max(0, Math.round((metadata.width - (logoMeta.width || logoWidth)) / 2));
     const top = Math.max(0, Math.round((metadata.height - (logoMeta.height || 1)) / 2));
 
-    const output = await sharp(input, { animated: false, limitInputPixels: 40000000 })
-      .composite([{ input: overlay, left, top }])
-      .webp({ quality: 88 })
-      .toBuffer();
+    const output = await encodeImageInOriginalFormat(
+      sharp(input, { animated: false, limitInputPixels: 40000000 })
+        .composite([{ input: overlay, left, top }]),
+      originalFormat
+    ).toBuffer();
+    const outputType = contentTypeFromFormat(originalFormat, contentType);
+    const outputExtension = extensionFromFormat(originalFormat);
 
     return new Response(output, {
       status: 200,
       headers: {
-        "Content-Type": "image/webp",
-        ...(download ? { "Content-Disposition": 'attachment; filename="fotografia-con-marca-de-agua.webp"' } : {}),
+        "Content-Type": outputType,
+        ...(download ? { "Content-Disposition": `attachment; filename="fotografia-con-marca-de-agua.${outputExtension}"` } : {}),
         "Cache-Control": download ? "no-store" : "public, max-age=3600, s-maxage=86400",
         "Access-Control-Allow-Origin": "*",
         "X-Content-Type-Options": "nosniff"

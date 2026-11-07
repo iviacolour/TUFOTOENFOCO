@@ -867,25 +867,67 @@
                 <button type="button" onclick="irAFotoModal(${i})" aria-label="Ver fotografía ${i+1}" class="gal-thumb w-24 h-24 lg:w-full lg:h-32 rounded-lg overflow-hidden border-2 ${i===0?'border-brand-accent opacity-100':'border-transparent opacity-50'} cursor-pointer hover:opacity-100 transition-all flex-shrink-0 relative group bg-[#121212]">
                 <img src="${urlImagenGaleria(url,eventoModalActual)}" alt="Miniatura ${i+1}" class="w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${placeholderImagen}'"><span class="absolute inset-0 bg-black/20 group-hover:bg-transparent pointer-events-none"></span></button>`).join('');
         }
+        function extensionDesdeMime(mime, urlOriginal) {
+            const tipos = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/avif': 'avif', 'image/tiff': 'tif', 'image/gif': 'gif', 'image/heif': 'heif' };
+            const tipo = String(mime || '').split(';')[0].trim().toLowerCase();
+            if (tipos[tipo]) return tipos[tipo];
+            try { return (new URL(urlOriginal)).pathname.match(/\.([^.\/]+)$/)?.[1]?.toLowerCase() || 'jpg'; }
+            catch (_) { return 'jpg'; }
+        }
+
+        function mostrarAvisoDescarga(fallbackUrl) {
+            document.getElementById('aviso-descarga-tufoto')?.remove();
+            const aviso = document.createElement('div');
+            aviso.id = 'aviso-descarga-tufoto';
+            aviso.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-lg rounded-xl border border-brand-accent/50 bg-zinc-950 text-white shadow-2xl p-5';
+            aviso.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="mt-0.5 text-brand-accent text-xl" aria-hidden="true">ⓘ</div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-bold tracking-wide">TuFotoEnFoco · Descarga alternativa</p>
+                        <p class="mt-1 text-sm leading-relaxed text-zinc-300">No hemos podido iniciar la descarga automática. Puedes abrir la fotografía en una pestaña nueva y guardarla desde allí.</p>
+                        <div class="mt-4 flex flex-wrap gap-3">
+                            <a href="${fallbackUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-md bg-brand-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-black hover:bg-white transition-colors">Abrir fotografía</a>
+                            <button type="button" class="rounded-md border border-zinc-700 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-300 hover:border-white hover:text-white">Cerrar</button>
+                        </div>
+                    </div>
+                </div>`;
+            aviso.querySelector('button').addEventListener('click', () => aviso.remove());
+            document.body.appendChild(aviso);
+        }
+
         async function descargarFotoSeleccionada(){
-            const url=arrayFotosActuales[indexFotoActual];if(!url)return;
+            const url=arrayFotosActuales[indexFotoActual];
+            if(!url) return;
+            const llevaMarca=eventoTieneMarcaAgua(eventoModalActual);
             const downloadUrl=urlDescargaFoto(url,eventoModalActual);
-            try{
+            // Abrimos una pestaña vacía durante el gesto del usuario para poder usarla
+            // como alternativa si el navegador o el servidor bloquean la descarga.
+            const pestañaAlternativa=window.open('about:blank','_blank');
+            const fallbackUrl=llevaMarca ? urlImagenGaleria(url,eventoModalActual) : url;
+            try {
                 const r=await fetch(downloadUrl,{cache:'no-store'});
-                if(!r.ok)throw new Error(`Descarga no disponible (${r.status})`);
+                if(!r.ok) throw new Error(`HTTP ${r.status}`);
                 const blob=await r.blob();
-                const obj=URL.createObjectURL(blob);
-                const extension=(blob.type==='image/webp'?'webp':((new URL(url)).pathname.match(/\.([^.\/]+)$/)||[])[1]||'jpg');
+                if(!blob.size || !String(blob.type||'').startsWith('image/')) throw new Error('Respuesta de imagen no válida');
+                const extension=extensionDesdeMime(blob.type,url);
+                const objectUrl=URL.createObjectURL(blob);
                 const a=document.createElement('a');
-                a.href=obj;
+                a.href=objectUrl;
                 a.download=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}.${extension}`;
                 document.body.appendChild(a);a.click();a.remove();
-                setTimeout(()=>URL.revokeObjectURL(obj),30000);
-            }catch(e){
+                setTimeout(()=>URL.revokeObjectURL(objectUrl),1500);
+                if(pestañaAlternativa && !pestañaAlternativa.closed) pestañaAlternativa.close();
+            } catch(e) {
                 console.error('No se pudo descargar la fotografía:',e);
-                alert('No se ha podido descargar la fotografía. Inténtalo de nuevo.');
+                if(pestañaAlternativa && !pestañaAlternativa.closed) {
+                    pestañaAlternativa.location.replace(fallbackUrl);
+                } else {
+                    mostrarAvisoDescarga(fallbackUrl);
+                }
             }
         }
+
 
         document.addEventListener('DOMContentLoaded', async () => {
             // Carga el formulario desde un único archivo compartido por toda la web.
