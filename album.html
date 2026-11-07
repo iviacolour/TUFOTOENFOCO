@@ -490,6 +490,7 @@
                 <a id="modal-btn-ver-album" href="album.html" class="inline-flex mb-3 ml-2 items-center justify-center px-4 py-2 border border-zinc-600 hover:border-brand-accent hover:text-brand-accent text-white text-xs font-bold uppercase tracking-widest rounded-md transition-colors">Ver álbum</a>
                 <h2 id="modal-gal-titulo" class="text-2xl md:text-3xl font-black text-white uppercase tracking-tight"></h2>
                 <p id="modal-gal-desc" class="text-gray-400 text-sm md:text-base mt-2 line-clamp-2 md:line-clamp-none"></p>
+                <p id="modal-gal-resultados" class="hidden text-brand-accent text-sm md:text-base mt-1"></p>
             </div>
             <div class="flex flex-col lg:flex-row flex-grow min-h-0 bg-brand-base relative">
                 <div class="flex-grow relative flex items-center justify-center bg-brand-base overflow-hidden group">
@@ -774,8 +775,12 @@
         window.abrirModalGaleria = async function(idEv) {
             const ev=window.eventosGlobal[idEv]; if(!ev)return;
             eventoModalActual=ev;
+            const albumLink=document.getElementById('modal-btn-ver-album');
+            if(albumLink) albumLink.href='album.html?id='+codificarIdAlbum(ev.ID_Evento||ev.ID_evento||ev.ID||'');
             document.getElementById('modal-gal-titulo').textContent=ev.Titulo||'';
-            document.getElementById('modal-gal-desc').textContent=ev.Resultados||ev.Descripcion_Larga||ev.Descripcion_Corta||'';
+            document.getElementById('modal-gal-desc').textContent=ev.Descripcion_Larga||ev.Descripcion_Corta||'';
+            const resultadosEl=document.getElementById('modal-gal-resultados');
+            if(resultadosEl){resultadosEl.textContent=String(ev.Resultados||'').trim();resultadosEl.classList.toggle('hidden',!resultadosEl.textContent); }
             document.getElementById('modal-gal-lugar').textContent=ev.Lugar||'';
             document.getElementById('modal-gal-fecha').textContent=ev.Fecha||'';
             const free=checkIsTrue(ev.Descarga_Gratis ?? ev.Descarga ?? ev['Descarga gratis']);
@@ -1216,7 +1221,8 @@
             const safe=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             const linkCompra=String(ev.Link_Compra||'').trim();
             const free=checkIsTrue(ev.Descarga_Gratis ?? ev.Descarga ?? ev['Descarga gratis']);
-            const descripcion=String(ev.Resultados||'').trim()||String(ev.Descripcion_Larga||'').trim();
+            const descripcion=String(ev.Descripcion_Larga||'').trim();
+            const resultados=String(ev.Resultados||'').trim();
             const fotosTotal=all.length;
             const nombreFoto=(url,n)=>{try{const p=new URL(url,location.href).pathname.split('/').pop();return decodeURIComponent(p||`${id}_${n+1}`);}catch(e){return `${id}_${n+1}`;}};
             const metadata=()=>`<div class="album-meta-card rounded-xl border border-zinc-700 bg-zinc-900/95 p-5 shadow-[0_0_18px_rgba(241,233,51,0.10)] backdrop-blur"><p class="text-brand-accent text-[11px] uppercase tracking-[.2em] font-bold mb-3">Información de la fotografía</p><p id="album-photo-name" class="text-white font-bold break-all">${safe(nombreFoto(all[0],0))}</p><p class="text-white mt-2 font-semibold">${safe(ev.Titulo||'')}</p><div class="mt-3 space-y-2 text-sm text-gray-300"><p><span class="text-brand-accent">Fecha</span> · ${safe(ev.Fecha||'—')}</p><p><span class="text-brand-accent">Lugar</span> · ${safe(ev.Lugar||'—')}</p></div><div class="flex flex-col gap-2 mt-4">${free?'<button id="album-free-download" type="button" class="w-full px-4 py-3 border border-zinc-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:border-brand-accent hover:text-brand-accent">Descargar gratis con marca de agua</button>':''}${/^https?:\/\//i.test(linkCompra)?`<a href="${safe(linkCompra)}" target="_blank" rel="noopener noreferrer" class="block text-center px-4 py-3 bg-brand-accent text-black rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-white">Tu recuerdo sin logotipo</a>`:''}</div></div>`;
@@ -1225,6 +1231,7 @@
               <h1 class="text-3xl md:text-5xl font-black text-white">${safe(ev.Titulo||'')}</h1>
               <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-brand-accent"><span>${safe(ev.Fecha||'')}</span><span class="text-zinc-600">|</span><span>${safe(ev.Lugar||'')}</span><span class="text-zinc-600">|</span><span>${fotosTotal} fotografías</span></div>
               ${descripcion?`<p class="text-white text-base md:text-lg leading-relaxed mt-5 max-w-5xl whitespace-pre-line">${safe(descripcion)}</p>`:''}
+              ${resultados?`<p class="text-brand-accent text-sm md:text-base leading-relaxed mt-2 max-w-5xl whitespace-pre-line">${safe(resultados)}</p>`:''}
               ${/^https?:\/\//i.test(linkCompra)?`<div class="mt-7 border-y border-zinc-800 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"><p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos. ¡Gracias!</p><a href="${safe(linkCompra)}" target="_blank" rel="noopener noreferrer" class="shrink-0 px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white transition-colors">Tu recuerdo sin logotipo · descárgalo aquí</a></div>`:''}
               <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-5 mt-8 items-start">
                 <div>
@@ -1310,15 +1317,15 @@
         }
 
         function normalizarCategoria(v){return String(v||'').trim().toLocaleLowerCase('es');}
-        function categoriaEfectiva(ev){return String(ev.Categoria_Mas_Deportes||'').trim()||String(ev.Categoria_Header||'').trim();}
+        function categoriaEfectiva(ev){return String(ev.Categoria_Mas_Deportes||'').trim()||String(ev.Categoria_Header||'').trim()||'General';}
         function renderDynamicPage(mode,gals){
             const root=document.getElementById('dynamic-page');if(!root)return;root.classList.remove('hidden');
             const params=new URLSearchParams(location.search); if(mode==='galerias') mode=params.get('tipo')==='categorias'?'categorias':'todas'; const category=mode==='categoria'?(params.get('cat')||''):'';
-            const cats=[...new Set([...(window.categoriasOrdenadas||[]),...(window.categoriasDisponibles||[]),...(window.categoriasMasDeportesOrdenadas||[]),...gals.map(g=>categoriaEfectiva(g))].map(v=>String(v||'').trim()).filter(Boolean))];
+            const cats=[...new Set([...(window.categoriasOrdenadas||[]),...(window.categoriasDisponibles||[]),...(window.categoriasMasDeportesOrdenadas||[]),...gals.map(g=>categoriaEfectiva(g))].map(v=>String(v||'').trim()).filter(Boolean))].filter(cat=>!['sin balon','cultura','mas deportes'].includes(normalizarCategoria(cat)));
             if(mode==='categorias'){
-                const cols=cats.length<=4?Math.max(cats.length,1):(cats.length<=6?3:4);
-                const cards=cats.map(cat=>{const ev=gals.find(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const img=ev ? urlImagenGaleria(ev.Foto_Cabecera||placeholderImagen,ev) : placeholderImagen;return `<a href="categoria.html?cat=${encodeURIComponent(cat)}" class="group bg-brand-base border border-zinc-800 rounded-2xl overflow-hidden hover:border-brand-accent transition-all"><div class="h-52 overflow-hidden"><img src="${img}" onerror="this.onerror=null;this.src='${placeholderImagen}'" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"></div><div class="p-5"><h2 class="text-xl font-bold text-white group-hover:text-brand-accent">${cat}</h2><p class="text-sm text-gray-400 mt-1">${gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat)).length} galerías</p></div></a>`;}).join('');
-                root.innerHTML=`<section class="max-w-[95%] 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-16 min-h-[70vh]"><div class="mb-10 border-b border-zinc-800 pb-5"><p class="text-brand-accent text-xs font-bold tracking-widest uppercase mb-3">TUFOTOENFOCO</p><h1 class="text-4xl md:text-5xl font-black text-white">Explora las categorías</h1><p class="text-gray-400 mt-3">Encuentra cada historia por deporte y temática</p></div><div class="grid gap-6" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">${cards||'<p class="text-gray-400">No hay categorías disponibles.</p>'}</div><style>@media(max-width:767px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(1,minmax(0,1fr))!important}}@media(min-width:768px) and (max-width:1023px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}</style></section>`;return;
+                const cols=cats.length<=4?2:(cats.length<=6?3:(cats.length<=8?4:(cats.length%3===0?3:4)));
+                const cards=cats.map(cat=>{const ev=gals.find(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const img=ev ? urlImagenGaleria(ev.Foto_Cabecera||placeholderImagen,ev) : placeholderImagen;return `<a href="categoria.html?cat=${encodeURIComponent(cat)}" class="${cats.length===1?'col-span-full justify-self-center w-full max-w-[520px] ':''}group bg-brand-base border border-zinc-800 rounded-2xl overflow-hidden hover:border-brand-accent transition-all"><div class="h-52 overflow-hidden"><img src="${img}" onerror="this.onerror=null;this.src='${placeholderImagen}'" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"></div><div class="p-5"><h2 class="text-xl font-bold text-white group-hover:text-brand-accent">${cat}</h2><p class="text-sm text-gray-400 mt-1">${gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat)).length} galerías</p></div></a>`;}).join('');
+                root.innerHTML=`<section class="max-w-[95%] 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-16 min-h-[70vh]"><div class="mb-10 border-b border-zinc-800 pb-5"><p class="text-brand-accent text-xs font-bold tracking-widest uppercase mb-3">TUFOTOENFOCO</p><h1 class="text-4xl md:text-5xl font-black text-white">Explora las categorías</h1><p class="text-gray-400 mt-3">Encuentra cada historia por deporte y temática</p></div><div class="grid gap-6 justify-center justify-items-stretch mx-auto w-full" style="grid-template-columns:repeat(${cols},minmax(0,1fr));max-width:1600px">${cards||'<p class="text-gray-400">No hay categorías disponibles.</p>'}</div><style>@media(max-width:767px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media(min-width:768px) and (max-width:1023px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media(min-width:1024px) and (max-width:1279px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(3,minmax(0,1fr))!important}}@media(min-width:1280px){#dynamic-page .grid[style*=grid-template-columns]{grid-template-columns:repeat(${cols},minmax(0,1fr))!important}}</style></section>`;return;
             }
             let filtered=mode==='sinbalon'?gals.filter(g=>['sin balón','sin balon'].includes(normalizarCategoria(g.Categoria_Header))):mode==='cultura'?gals.filter(g=>normalizarCategoria(g.Categoria_Header)==='cultura'):mode==='categoria'?gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(category)):gals;
             const hero=mode==='sinbalon'?'<div class="mb-10 text-left w-full"><p class="text-brand-accent text-xs font-bold tracking-widest uppercase">Encuentra tu momento</p><h1 class="text-5xl md:text-7xl font-black text-white mt-2">Sin balón</h1><p class="text-xl text-gray-300 mt-4">Porque el juego también sucede lejos del balón</p></div>':mode==='cultura'?'<div class="mb-10 text-left w-full"><p class="text-brand-accent text-xs font-bold tracking-widest uppercase">Encuentra tu momento</p><h1 class="text-5xl md:text-7xl font-black text-white mt-2">Cultura</h1><p class="text-xl text-gray-300 mt-4">Tradiciones, arte y momentos que forman parte de nuestra historia.</p></div>':`<div class="mb-10 border-b border-zinc-800 pb-5"><p class="text-brand-accent text-xs font-bold tracking-widest uppercase mb-3">TUFOTOENFOCO</p><h1 class="text-4xl md:text-5xl font-black text-white">${mode==='categoria'?category:'Todas las galerías'}</h1><p class="text-gray-400 mt-3">Explora los reportajes disponibles</p></div>`;
@@ -1330,7 +1337,7 @@
         function actualizarMenusDinamicos(datos) {
             const claveMenuCategoria = valor => String(valor || '').trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
             const categoriasPrincipales = [...new Set([...(window.categoriasOrdenadas || []), ...(window.categoriasDisponibles || [])].map(v => String(v || '').trim()).filter(Boolean))]
-                .filter(cat => !['sin balon', 'cultura', 'mas deportes'].includes(claveMenuCategoria(cat)))
+                .filter(cat => !['sin balon', 'cultura', 'mas deportes', 'general'].includes(claveMenuCategoria(cat)))
                 .filter(cat => gals.some(e => claveMenuCategoria(e.Categoria_Header) === claveMenuCategoria(cat)));
             const usadasEnMasDeportes = [...new Set(datos.filter(e => checkIsTrue(e.Es_Mas_Deportes)).map(e => String(e.Categoria_Mas_Deportes || '').trim()).filter(Boolean))];
             const ordenM = window.categoriasMasDeportesOrdenadas || [];
@@ -1351,7 +1358,7 @@
         }
 
         function generarTarjetaHTML(evento) {
-            const cat = String(evento.Categoria_Mas_Deportes || evento.Categoria_Header || 'General').trim();
+            const cat = categoriaEfectiva(evento);
             let cColor = "bg-black/80 text-white", bColor = "border-zinc-800", catMost = cat;
 
             if (cat.toLowerCase() === 'más deportes' || cat.toLowerCase() === 'mas deportes') {
