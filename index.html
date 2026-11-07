@@ -223,101 +223,108 @@
 
 
 <style id="caricature-interaction-styles">
-/* La imagen vive en una capa hermana: el fondo del panel/footer se pinta por delante. */
-.caricature-intro-wrap,
-.caricature-footer-wrap {
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-}
-.caricature-intro-wrap {
-  width: 100%;
-}
 .caricature-trigger-intro {
-  position: relative !important;
-  z-index: 2 !important;
-  isolation: isolate;
+  position: relative;
   cursor: pointer;
   transform-origin: center;
   transition: transform .24s cubic-bezier(.2,.75,.25,1.2);
   outline-offset: 5px;
 }
 .caricature-trigger-intro:hover { transform: scale(1.015); }
-.caricature-trigger-footer { position: relative; z-index: 2 !important; }
+.caricature-trigger-footer { position: relative; }
 .caricature-pop-image {
   position: absolute;
   display: none;
+  width: clamp(95px, 13.5vw, 165px);
   height: auto;
   object-fit: contain;
-  z-index: 1 !important;
+  z-index: 60;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
+  clip-path: inset(0 0 5% 0);
   filter: drop-shadow(0 8px 10px rgba(0,0,0,.32));
   will-change: transform, opacity;
 }
-.caricature-intro-wrap > .caricature-pop-image {
-  right: 0; /* El JS alinea este borde con el borde derecho real del recuadro. */
-  bottom: 100%;
-  width: clamp(95px, 13.5vw, 165px);
-  transform: translateY(100%) scale(.94);
+/* El borde inferior visible de la caricatura queda exactamente alineado con
+   el borde superior blanco del recuadro. El 5% inferior queda oculto detrás. */
+.caricature-trigger-intro .caricature-pop-image {
+  right: clamp(6px, 1.5vw, 16px);
+  bottom: calc(100% - 1px);
+  transform: translateY(5%) scale(.94);
   transform-origin: 50% 100%;
 }
-.caricature-footer-wrap > .caricature-pop-image {
+/* En el footer se aplica el mismo anclaje: emerge por encima del borde superior. */
+#main-footer .caricature-pop-image {
+  bottom: calc(100% - 1px);
   left: 50%;
-  bottom: 100%;
   width: clamp(82px, 11.5vw, 143px);
-  transform: translate(-50%, 100%) scale(.94);
+  transform: translate(-50%, 5%) scale(.94);
   transform-origin: 50% 100%;
 }
-/* El propio panel/footer tiene una capa superior opaca que oculta la parte solapada. */
-.caricature-intro-wrap > .caricature-trigger-intro { z-index: 2 !important; }
-#main-footer { position: relative; z-index: 2 !important; overflow: visible !important; }
-.caricature-trigger-intro .caricature-pop-image.is-visible,
-.caricature-intro-wrap > .caricature-pop-image.is-visible {
+.caricature-trigger-intro .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpCard 1.5s cubic-bezier(.2,.72,.25,1) both;
+  animation: caricatureSpringUpCard 3.8s cubic-bezier(.18,.88,.24,1) both;
 }
-.caricature-footer-wrap > .caricature-pop-image.is-visible {
+#main-footer .caricature-pop-image.is-visible {
   display: block; visibility: visible;
-  animation: caricatureSpringUpFooter 1.5s cubic-bezier(.2,.72,.25,1) both;
+  animation: caricatureSpringUpFooter 3.8s cubic-bezier(.18,.88,.24,1) both;
 }
-.caricature-intro-wrap > .caricature-pop-image.is-hiding {
+.caricature-trigger-intro .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownCard .85s cubic-bezier(.55,0,.8,.35) both;
+  animation: caricatureSpringDownCard 2s cubic-bezier(.5,0,.75,.25) both;
 }
-.caricature-footer-wrap > .caricature-pop-image.is-hiding {
+#main-footer .caricature-pop-image.is-hiding {
   display: block; visibility: visible;
-  animation: caricatureSpringDownFooter .85s cubic-bezier(.55,0,.8,.35) both;
+  animation: caricatureSpringDownFooter 2s cubic-bezier(.5,0,.75,.25) both;
 }
-/* El movimiento es siempre hacia arriba hasta el borde, sin rebasar la posición final. */
+/* Sale lentamente desde dentro del elemento, desacelera y rebota suavemente. */
 @keyframes caricatureSpringUpCard {
-  0% { opacity:0; transform:translateY(100%) scale(.82) }
-  58% { opacity:1; transform:translateY(24%) scale(1.025) }
-  76% { opacity:1; transform:translateY(7%) scale(.985) }
-  89% { opacity:1; transform:translateY(2%) scale(1.008) }
-  100% { opacity:1; transform:translateY(0) scale(1) }
+  0%   {opacity:0; transform:translateY(118%) scale(.78)}
+  12%  {opacity:.04; transform:translateY(105%) scale(.82)}
+  28%  {opacity:.28; transform:translateY(62%) scale(.91)}
+  43%  {opacity:.72; transform:translateY(16%) scale(1.02)}
+  54%  {opacity:1; transform:translateY(-13%) scale(1.10)}
+  64%  {opacity:1; transform:translateY(8%) scale(.96)}
+  73%  {opacity:1; transform:translateY(-7%) scale(1.055)}
+  82%  {opacity:1; transform:translateY(5%) scale(.985)}
+  90%  {opacity:1; transform:translateY(-2.5%) scale(1.025)}
+  96%  {opacity:1; transform:translateY(1.5%) scale(.995)}
+  100% {opacity:1; transform:translateY(5%) scale(1)}
 }
 @keyframes caricatureSpringUpFooter {
-  0% { opacity:0; transform:translate(-50%,100%) scale(.82) }
-  58% { opacity:1; transform:translate(-50%,24%) scale(1.025) }
-  76% { opacity:1; transform:translate(-50%,7%) scale(.985) }
-  89% { opacity:1; transform:translate(-50%,2%) scale(1.008) }
-  100% { opacity:1; transform:translate(-50%,0) scale(1) }
+  0%   {opacity:0; transform:translate(-50%,118%) scale(.78)}
+  12%  {opacity:.04; transform:translate(-50%,105%) scale(.82)}
+  28%  {opacity:.28; transform:translate(-50%,62%) scale(.91)}
+  43%  {opacity:.72; transform:translate(-50%,16%) scale(1.02)}
+  54%  {opacity:1; transform:translate(-50%,-13%) scale(1.10)}
+  64%  {opacity:1; transform:translate(-50%,8%) scale(.96)}
+  73%  {opacity:1; transform:translate(-50%,-7%) scale(1.055)}
+  82%  {opacity:1; transform:translate(-50%,5%) scale(.985)}
+  90%  {opacity:1; transform:translate(-50%,-2.5%) scale(1.025)}
+  96%  {opacity:1; transform:translate(-50%,1.5%) scale(.995)}
+  100% {opacity:1; transform:translate(-50%,5%) scale(1)}
 }
 @keyframes caricatureSpringDownCard {
-  0% { opacity:1; transform:translateY(0) scale(1) }
-  35% { opacity:1; transform:translateY(18%) scale(.98) }
-  100% { opacity:0; transform:translateY(100%) scale(.82) }
+  0% {opacity:1;transform:translateY(5%) scale(1)}
+  18% {opacity:1;transform:translateY(-5%) scale(1.06)}
+  38% {opacity:.9;transform:translateY(20%) scale(.94)}
+  62% {opacity:.55;transform:translateY(58%) scale(.88)}
+  82% {opacity:.18;transform:translateY(94%) scale(.82)}
+  100% {opacity:0;transform:translateY(118%) scale(.78)}
 }
 @keyframes caricatureSpringDownFooter {
-  0% { opacity:1; transform:translate(-50%,0) scale(1) }
-  35% { opacity:1; transform:translate(-50%,18%) scale(.98) }
-  100% { opacity:0; transform:translate(-50%,100%) scale(.82) }
+  0% {opacity:1;transform:translate(-50%,5%) scale(1)}
+  18% {opacity:1;transform:translate(-50%,-5%) scale(1.06)}
+  38% {opacity:.9;transform:translate(-50%,20%) scale(.94)}
+  62% {opacity:.55;transform:translate(-50%,58%) scale(.88)}
+  82% {opacity:.18;transform:translate(-50%,94%) scale(.82)}
+  100% {opacity:0;transform:translate(-50%,118%) scale(.78)}
 }
+#main-footer { overflow: visible !important; position: relative; z-index: 2; }
 @media(max-width:640px) {
- .caricature-intro-wrap > .caricature-pop-image {width:min(34vw,122px)}
- .caricature-footer-wrap > .caricature-pop-image {width:min(33vw,122px)}
+ .caricature-trigger-intro .caricature-pop-image {right:4px;width:min(34vw,122px)}
+ #main-footer .caricature-pop-image {width:min(33vw,122px)}
 }
 @media(prefers-reduced-motion:reduce) {
  .caricature-trigger-intro {transition:none}
@@ -631,6 +638,22 @@
             return `${NETLIFY_IMAGE_BASE}${endpoint}?watermark=1&url64=${encodedSource}`;
         }
 
+        function urlDescargaFoto(url, evento) {
+            const source = String(url || '').trim();
+            if (!source || !/^https?:\/\//i.test(source)) return source;
+            let endpoint = 'imagen-externa';
+            try {
+                const parsed = new URL(source);
+                if (parsed.hostname.toLowerCase() === 'f003.backblazeb2.com' && parsed.pathname.toLowerCase().startsWith('/file/tufotoenfocogaleria/')) endpoint = 'imagen';
+            } catch (_) { return source; }
+            const encodedSource = btoa(unescape(encodeURIComponent(source)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/g, '');
+            const watermark = eventoTieneMarcaAgua(evento) ? '&watermark=1' : '';
+            return `${NETLIFY_IMAGE_BASE}${endpoint}?download=1${watermark}&url64=${encodedSource}`;
+        }
+
 
         function aplicarFondosAlternos() {
             const sections = document.querySelectorAll('section.alternating-section');
@@ -641,8 +664,6 @@
                     sec.classList.add(isDark ? 'bg-zinc-950' : 'bg-[#121212]');
                     const panel = sec.querySelector('.effort-story-panel');
                     if (panel) panel.style.backgroundColor = isDark ? '#121212' : '#09090b';
-                    const introPanel = sec.querySelector('.caricature-trigger-intro');
-                    if (introPanel) introPanel.style.setProperty('background-color', isDark ? '#121212' : '#09090b', 'important');
                     isDark = !isDark;
                 }
             });
@@ -892,8 +913,22 @@
         }
         async function descargarFotoSeleccionada(){
             const url=arrayFotosActuales[indexFotoActual];if(!url)return;
-            try{const r=await fetch(url);if(!r.ok)throw Error('download');const blob=await r.blob(),obj=URL.createObjectURL(blob),a=document.createElement('a');a.href=obj;const extension=(new URL(url).pathname.match(/\.([^.\/]+)$/)||[])[1]||'jpg';a.download=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}.${extension}`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(obj),1500);}
-            catch(e){window.open(url,'_blank','noopener');}
+            const downloadUrl=urlDescargaFoto(url,eventoModalActual);
+            try{
+                const r=await fetch(downloadUrl,{cache:'no-store'});
+                if(!r.ok)throw new Error(`Descarga no disponible (${r.status})`);
+                const blob=await r.blob();
+                const obj=URL.createObjectURL(blob);
+                const extension=(blob.type==='image/webp'?'webp':((new URL(url)).pathname.match(/\.([^.\/]+)$/)||[])[1]||'jpg');
+                const a=document.createElement('a');
+                a.href=obj;
+                a.download=`${eventoModalActual?.ID_Evento||'fotografia'}_${indexFotoActual+1}.${extension}`;
+                document.body.appendChild(a);a.click();a.remove();
+                setTimeout(()=>URL.revokeObjectURL(obj),30000);
+            }catch(e){
+                console.error('No se pudo descargar la fotografía:',e);
+                alert('No se ha podido descargar la fotografía. Inténtalo de nuevo.');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -1198,7 +1233,7 @@
             const cat=categoriaEfectiva(ev);const categoryHref=['sin balón','sin balon'].includes(normalizarCategoria(cat))?'sin-balon.html':normalizarCategoria(cat)==='cultura'?'cultura.html':'categoria.html?cat='+encodeURIComponent(cat);
             const photos=await fetchFotosDesdeBackblaze(id);const all=photos.length?photos:(ev.Foto_Cabecera?[ev.Foto_Cabecera]:[]);const total=Number(ev.Total_Fotos)||all.length||0;let page=0,selected=0;const perPage=16;
             const same=gals.filter(g=>normalizarCategoria(categoriaEfectiva(g))===normalizarCategoria(cat));const idx=same.findIndex(g=>String(g.ID_Evento)===id);const next=same[idx+1];
-            root.innerHTML=`<section class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen"><nav class="text-sm text-gray-400 mb-5"><a href="galerias.html?tipo=categorias" class="hover:text-brand-accent">Categorías</a><span class="mx-2">/</span><a href="${categoryHref}" class="hover:text-brand-accent">${cat}</a></nav><h1 class="text-3xl md:text-5xl font-black text-white">${ev.Titulo||''}</h1><div class="text-gray-400 mt-3 flex flex-wrap gap-x-4 gap-y-1"><span>${ev.Fecha||''}</span><span>${ev.Lugar||''}</span><span>${total} fotografías</span></div><p class="text-gray-300 text-base md:text-lg leading-relaxed mt-5 max-w-5xl">${ev.Resultados||ev.Descripcion_Larga||''}</p><div class="mt-8 bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[65vh]"><img id="album-main-photo" src="${urlImagenGaleria(all[0]||svgCamara,ev)}" alt="${ev.Titulo||'Fotografía del álbum'}" class="max-w-full max-h-[75vh] object-contain"></div><div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-zinc-800 py-4"><p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos.</p>${/^https?:\/\//i.test(String(ev.Link_Compra||''))?`<a href="${ev.Link_Compra}" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white">Tu recuerdo sin logo · descárgalo aquí</a>`:''}</div><div class="flex flex-wrap items-center justify-between gap-3 mt-7"><p id="album-counter" class="text-sm text-gray-300 font-semibold">${Math.min(perPage,total)} de ${total} archivos</p><div class="flex gap-2"><button id="album-prev" class="px-5 py-2 rounded-md border border-zinc-700 text-white disabled:opacity-30">Atrás</button><button id="album-next" class="px-5 py-2 rounded-md bg-brand-accent text-black font-bold disabled:opacity-30">Siguiente</button></div></div><div id="album-thumbs" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5"></div><div class="flex flex-wrap justify-between gap-3 mt-10 border-t border-zinc-800 pt-6"><a href="${categoryHref}" class="px-5 py-3 border border-zinc-700 rounded-md text-white hover:border-brand-accent">Volver a la categoría</a>${next?`<a href="album.html?id=${codificarIdAlbum(next.ID_Evento)}" class="px-5 py-3 bg-brand-accent text-black font-bold rounded-md">Siguiente evento</a>`:'<span></span>'}</div></section>`;
+            root.innerHTML=`<section class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen"><nav class="text-sm text-gray-400 mb-5"><a href="galerias.html?tipo=categorias" class="hover:text-brand-accent">Categorías</a><span class="mx-2">/</span><a href="${categoryHref}" class="hover:text-brand-accent">${cat}</a></nav><h1 class="text-3xl md:text-5xl font-black text-white">${ev.Titulo||''}</h1><div class="text-gray-400 mt-3 flex flex-wrap gap-x-4 gap-y-1"><span>${ev.Fecha||''}</span><span>${ev.Lugar||''}</span><span>${total} fotografías</span></div><p class="text-gray-300 text-base md:text-lg leading-relaxed mt-5 max-w-5xl">${ev.Resultados||ev.Descripcion_Larga||''}</p><div class="mt-8 bg-black rounded-xl overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[65vh]"><img id="album-main-photo" src="${urlImagenGaleria(all[0]||svgCamara,ev)}" alt="${ev.Titulo||'Fotografía del álbum'}" class="max-w-full max-h-[75vh] object-contain"></div><div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-y border-zinc-800 py-4">${/^https?:\/\//i.test(String(ev.Link_Compra||''))?`<p class="text-gray-300 text-sm md:text-base">Tu apoyo me permite seguir capturando momentos y creando recuerdos.</p><a href="${ev.Link_Compra}" target="_blank" rel="noopener noreferrer" class="px-5 py-3 bg-brand-accent text-black font-bold text-xs uppercase tracking-wider rounded-md hover:bg-white">Tu recuerdo sin logo · descárgalo aquí</a>`:''}</div><div class="flex flex-wrap items-center justify-between gap-3 mt-7"><p id="album-counter" class="text-sm text-gray-300 font-semibold">${Math.min(perPage,total)} de ${total} archivos</p><div class="flex gap-2"><button id="album-prev" class="px-5 py-2 rounded-md border border-zinc-700 text-white disabled:opacity-30">Atrás</button><button id="album-next" class="px-5 py-2 rounded-md bg-brand-accent text-black font-bold disabled:opacity-30">Siguiente</button></div></div><div id="album-thumbs" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5"></div><div class="flex flex-wrap justify-between gap-3 mt-10 border-t border-zinc-800 pt-6"><a href="${categoryHref}" class="px-5 py-3 border border-zinc-700 rounded-md text-white hover:border-brand-accent">Volver a la categoría</a>${next?`<a href="album.html?id=${codificarIdAlbum(next.ID_Evento)}" class="px-5 py-3 bg-brand-accent text-black font-bold rounded-md">Siguiente evento</a>`:'<span></span>'}</div></section>`;
             const draw=()=>{const start=page*perPage,end=Math.min(start+perPage,all.length);document.getElementById('album-counter').textContent=`${Math.min((page+1)*perPage,total)} de ${total} archivos`;document.getElementById('album-thumbs').innerHTML=all.slice(start,end).map((url,i)=>`<button type="button" class="aspect-square rounded-lg overflow-hidden border-2 ${start+i===selected?'border-brand-accent':'border-transparent'}" data-photo="${start+i}"><img src="${urlImagenGaleria(url,ev)}" loading="lazy" class="w-full h-full object-cover"></button>`).join('');document.getElementById('album-prev').disabled=page===0;document.getElementById('album-next').disabled=end>=all.length;document.querySelectorAll('#album-thumbs button').forEach(b=>b.addEventListener('click',()=>{selected=Number(b.dataset.photo);document.getElementById('album-main-photo').src=urlImagenGaleria(all[selected],ev);draw();}));};
             document.getElementById('album-prev').addEventListener('click',()=>{if(page>0){page--;draw();}});document.getElementById('album-next').addEventListener('click',()=>{if((page+1)*perPage<all.length){page++;selected=page*perPage;document.getElementById('album-main-photo').src=urlImagenGaleria(all[selected],ev);draw();}});draw();
         }
@@ -1287,53 +1322,40 @@
 (() => {
   const imagePath = 'assets/caricatura-tufotoenfoco.png';
   const initialized = new WeakSet();
-  function makeImage(kind) {
+  function attachCaricature(trigger, kind) {
+    if (!trigger || initialized.has(trigger)) return;
+    initialized.add(trigger);
     const image = document.createElement('img');
     image.className = 'caricature-pop-image';
     image.src = imagePath;
     image.alt = 'Caricatura de TUFOTOENFOCO';
     image.setAttribute('aria-hidden', 'true');
-    return image;
-  }
-  function attachCaricature(trigger, kind) {
-    if (!trigger || initialized.has(trigger)) return;
-    initialized.add(trigger);
-    const image = makeImage(kind);
-    let layer;
+
     if (kind === 'footer') {
       const footer = document.getElementById('main-footer');
-      if (!footer || !footer.parentElement) return;
-      layer = footer.parentElement;
-      layer.classList.add('caricature-footer-wrap');
-      layer.insertBefore(image, footer);
-      footer.style.position = 'relative';
-      footer.style.zIndex = '2';
+      if (footer) footer.appendChild(image);
+      else trigger.appendChild(image);
     } else {
-      layer = document.createElement('div');
-      layer.className = 'caricature-intro-wrap';
-      trigger.parentNode.insertBefore(layer, trigger);
-      layer.appendChild(image);
-      layer.appendChild(trigger);
-      const alignImageToCardRight = () => {
-        const layerRect = layer.getBoundingClientRect();
-        const triggerRect = trigger.getBoundingClientRect();
-        image.style.right = `${Math.max(0, layerRect.right - triggerRect.right)}px`;
-      };
-      alignImageToCardRight();
-      if (typeof ResizeObserver !== 'undefined') {
-        const resizeObserver = new ResizeObserver(alignImageToCardRight);
-        resizeObserver.observe(layer);
-        resizeObserver.observe(trigger);
-      }
-      window.addEventListener('resize', alignImageToCardRight, { passive: true });
+      trigger.appendChild(image);
     }
+
     const setOpen = (open) => {
       trigger.setAttribute('aria-expanded', String(open));
+      if (kind === 'footer') {
+        document.getElementById('main-footer')?.classList.toggle('caricature-footer-open', open);
+      }
       image.classList.remove('is-visible', 'is-hiding');
-      image.style.display = 'block';
-      image.style.visibility = 'visible';
-      void image.offsetWidth;
-      image.classList.add(open ? 'is-visible' : 'is-hiding');
+      if (open) {
+        image.style.display = 'block';
+        image.style.visibility = 'visible';
+        void image.offsetWidth;
+        image.classList.add('is-visible');
+      } else {
+        image.style.display = 'block';
+        image.style.visibility = 'visible';
+        void image.offsetWidth;
+        image.classList.add('is-hiding');
+      }
     };
     const toggle = (event) => {
       event?.preventDefault?.();
@@ -1358,9 +1380,7 @@
     document.querySelectorAll('.caricature-trigger-intro').forEach(el => attachCaricature(el, 'intro'));
   }
   function initFooter() {
-    const footer = document.getElementById('main-footer');
-    const trigger = footer?.querySelector('.caricature-trigger-footer');
-    if (trigger) attachCaricature(trigger, 'footer');
+    document.querySelectorAll('.caricature-trigger-footer').forEach(el => attachCaricature(el, 'footer'));
   }
   initIntro();
   initFooter();

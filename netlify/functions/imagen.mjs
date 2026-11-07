@@ -21,9 +21,10 @@ export default async (request) => {
       }
     }
     const watermark = requestUrl.searchParams.get("watermark") === "1";
+    const download = requestUrl.searchParams.get("download") === "1";
 
-    if (!source || !watermark) {
-      return new Response("Falta url o watermark=1", { status: 400 });
+    if (!source || (!watermark && !download)) {
+      return new Response("Falta url o una operación válida", { status: 400 });
     }
 
     let imageUrl;
@@ -58,6 +59,20 @@ export default async (request) => {
       return new Response("Imagen demasiado grande", { status: 413 });
     }
 
+    // Descarga sin marca: devuelve el archivo original como adjunto, no como pestaña de imagen.
+    if (download && !watermark) {
+      return new Response(input, {
+        status: 200,
+        headers: {
+          "Content-Type": contentType || "application/octet-stream",
+          "Content-Disposition": 'attachment; filename="fotografia-original"',
+          "Cache-Control": "no-store",
+          "Access-Control-Allow-Origin": "*",
+          "X-Content-Type-Options": "nosniff"
+        }
+      });
+    }
+
     const metadata = await sharp(input, { animated: false, limitInputPixels: false }).metadata();
     if (!metadata.width || !metadata.height) {
       return new Response("Formato de imagen no compatible", { status: 415 });
@@ -88,7 +103,8 @@ export default async (request) => {
       status: 200,
       headers: {
         "Content-Type": "image/webp",
-        "Cache-Control": "public, max-age=3600, s-maxage=86400",
+        ...(download ? { "Content-Disposition": 'attachment; filename="fotografia-con-marca-de-agua.webp"' } : {}),
+        "Cache-Control": download ? "no-store" : "public, max-age=3600, s-maxage=86400",
         "Access-Control-Allow-Origin": "*",
         "X-Content-Type-Options": "nosniff"
       }
