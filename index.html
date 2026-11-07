@@ -234,6 +234,7 @@
   position: relative !important;
   z-index: 2 !important;
   isolation: isolate;
+  background-color: #09090b; /* JS lo sincroniza con el fondo alterno de la sección */
   cursor: pointer;
   transform-origin: center;
   transition: transform .24s cubic-bezier(.2,.75,.25,1.2);
@@ -347,9 +348,9 @@
         
         <section class="relative bg-black overflow-hidden border-b border-zinc-800 min-h-[calc(100vh-96px)] flex">
             <div class="absolute inset-0">
-                <img id="img-hero-fondo" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" class="w-full h-full object-cover opacity-80 transition-opacity duration-1000">
-                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-black/30 to-transparent"></div>
-                <div class="absolute inset-0 bg-gradient-to-r from-black/65 via-black/25 to-transparent"></div>
+                <img id="img-hero-fondo" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" class="w-full h-full object-cover opacity-[82%] transition-opacity duration-1000">
+                <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-black/27 to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-black/58 via-black/22 to-transparent"></div>
             </div>
             <div class="relative max-w-[95%] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 pt-12 md:pt-24 flex flex-col items-start justify-start">
                 <div class="flex items-center gap-4 mb-6 mt-4">
@@ -652,6 +653,8 @@
                 if (window.getComputedStyle(sec).display !== 'none') {
                     sec.classList.remove('bg-zinc-950', 'bg-[#121212]');
                     sec.classList.add(isDark ? 'bg-zinc-950' : 'bg-[#121212]');
+                    const introPanel = sec.querySelector('.caricature-trigger-intro');
+                    if (introPanel) introPanel.style.backgroundColor = isDark ? '#121212' : '#09090b';
                     const panel = sec.querySelector('.effort-story-panel');
                     if (panel) panel.style.backgroundColor = isDark ? '#121212' : '#09090b';
                     isDark = !isDark;
@@ -1138,7 +1141,7 @@
                 const imgFondoPortada = document.getElementById('img-hero-fondo');
                 if(imgFondoPortada && data.imgPortada && String(data.imgPortada).trim() !== '') {
                     imgFondoPortada.src = data.imgPortada;
-                    imgFondoPortada.className = "w-full h-full object-cover opacity-80 transition-opacity duration-1000";
+                    imgFondoPortada.className = "w-full h-full object-cover opacity-[82%] transition-opacity duration-1000";
                 }
 
                 window.categoriasDisponibles = data.categorias || [];
