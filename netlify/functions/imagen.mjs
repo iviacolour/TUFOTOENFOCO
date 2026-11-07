@@ -60,28 +60,15 @@ export default async (request) => {
       return new Response("Origen de imagen no permitido", { status: 403 });
     }
 
-    let upstream = null;
-    let currentUrl = imageUrl;
-    for (let redirectCount = 0; redirectCount <= 3; redirectCount++) {
-      upstream = await fetch(currentUrl.toString(), { redirect: "manual" });
-      if (![301, 302, 303, 307, 308].includes(upstream.status)) break;
-      if (redirectCount === 3) return new Response("Demasiadas redirecciones al obtener la imagen", { status: 502 });
-      const location = upstream.headers.get("location");
-      if (!location) return new Response("Redirección sin destino al obtener la imagen", { status: 502 });
-      const nextUrl = new URL(location, currentUrl);
-      if (nextUrl.protocol !== "https:" || nextUrl.hostname !== BUCKET_HOST || !nextUrl.pathname.startsWith(BUCKET_PREFIX) || nextUrl.username || nextUrl.password) {
-        return new Response("Destino de imagen no permitido", { status: 403 });
-      }
-      currentUrl = nextUrl;
-    }
+    // La URL inicial está restringida al bucket esperado. Dejamos que fetch siga
+    // las redirecciones oficiales de Backblaze: su infraestructura puede cambiar
+    // el host/ruta de descarga y no debe bloquearse por exigir el mismo hostname.
+    const upstream = await fetch(imageUrl.toString(), { redirect: "follow", cache: "no-store" });
     if (!upstream || !upstream.ok) {
       return new Response("No se pudo obtener la imagen original", { status: upstream.status });
     }
 
     const contentType = (upstream.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.startsWith("image/")) {
-      return new Response("El recurso no es una imagen", { status: 415 });
-    }
 
     const declaredLength = Number(upstream.headers.get("content-length") || 0);
     if (declaredLength > MAX_INPUT_BYTES) {
@@ -93,27 +80,36 @@ export default async (request) => {
       return new Response("Imagen demasiado grande", { status: 413 });
     }
 
-    const metadata = await sharp(input, { animated: false, limitInputPixels: false }).metadata();
-    const originalFormat = metadata.format || "jpeg";
-    const originalExtension = extensionFromFormat(originalFormat);
-    const originalContentType = contentTypeFromFormat(originalFormat, contentType);
+    // Normalizamos primero la orientación EXIF y convertimos siempre a JPEG.
+    // También validamos el contenido real con Sharp, aunque Backblaze entregue
+    // un Content-Type genérico como application/octet-stream.
+    let rotatedInput;
+    let metadata;
+    try {
+      rotatedInput = await sharp(input, { animated: false, limitInputPixels: 40000000 })
+        .rotate()
+        .jpeg({ quality: 92, mozjpeg: true })
+        .toBuffer();
+      metadata = await sharp(rotatedInput, { limitInputPixels: 40000000 }).metadata();
+    } catch (_) {
+      return new Response("El archivo de Backblaze no contiene una imagen compatible", { status: 415 });
+    }
+    if (!metadata.width || !metadata.height) {
+      return new Response("Formato de imagen no compatible", { status: 415 });
+    }
 
-    // Descarga sin marca: devuelve bytes originales, conservando el formato y la extensión.
     if (download && !watermark) {
-      return new Response(input, {
+      return new Response(rotatedInput, {
         status: 200,
         headers: {
-          "Content-Type": originalContentType,
-          "Content-Disposition": `attachment; filename="fotografia-original.${originalExtension}"`,
-          "Cache-Control": "no-store",
+          "Content-Type": "image/jpeg",
+          "Content-Disposition": 'attachment; filename="fotografia.jpg"',
+          "Cache-Control": "no-store, no-cache, must-revalidate",
           "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "Content-Disposition, Content-Type",
           "X-Content-Type-Options": "nosniff"
         }
       });
-    }
-
-    if (!metadata.width || !metadata.height) {
-      return new Response("Formato de imagen no compatible", { status: 415 });
     }
 
     // Logo centrado: 70% del ancho de la imagen y 30% de opacidad.
@@ -133,18 +129,19 @@ export default async (request) => {
     const top = Math.max(0, Math.round((metadata.height - (logoMeta.height || 1)) / 2));
 
     const output = await encodeImageInOriginalFormat(
-      sharp(input, { animated: false, limitInputPixels: false })
+      sharp(rotatedInput, { animated: false, limitInputPixels: 40000000 })
         .composite([{ input: overlay, left, top }]),
-      originalFormat
+      "jpeg"
     ).toBuffer();
-    const outputType = contentTypeFromFormat(originalFormat, contentType);
-    const outputExtension = extensionFromFormat(originalFormat);
+    const outputType = "image/jpeg";
+    const outputExtension = "jpg";
 
     return new Response(output, {
       status: 200,
       headers: {
         "Content-Type": outputType,
-        ...(download ? { "Content-Disposition": `attachment; filename="fotografia-con-marca-de-agua.${outputExtension}"` } : {}),
+        ...(download ? { "Content-Disposition": 'attachment; filename="fotografia-con-marca-de-agua.jpg"' } : {}),
+        "Access-Control-Expose-Headers": "Content-Disposition, Content-Type",
         "Cache-Control": download ? "no-store" : "public, max-age=3600, s-maxage=86400",
         "Access-Control-Allow-Origin": "*",
         "X-Content-Type-Options": "nosniff"

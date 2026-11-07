@@ -103,10 +103,9 @@ export default async (request) => {
       return new Response("No se pudo obtener la imagen original", { status: upstream.status });
     }
 
+    // Algunos servidores de imágenes responden con application/octet-stream;
+    // la validación real del formato se realiza con Sharp más abajo.
     const contentType = (upstream.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.startsWith("image/")) {
-      return new Response("El recurso no es una imagen", { status: 415 });
-    }
 
     const declaredLength = Number(upstream.headers.get("content-length") || 0);
     if (declaredLength > MAX_INPUT_BYTES) {
@@ -118,27 +117,33 @@ export default async (request) => {
       return new Response("Imagen demasiado grande", { status: 413 });
     }
 
-    const metadata = await sharp(input, { animated: false, limitInputPixels: 40000000 }).metadata();
-    const originalFormat = metadata.format || "jpeg";
-    const originalExtension = extensionFromFormat(originalFormat);
-    const originalContentType = contentTypeFromFormat(originalFormat, contentType);
+    let rotatedInput;
+    let metadata;
+    try {
+      rotatedInput = await sharp(input, { animated: false, limitInputPixels: 40000000 })
+        .rotate()
+        .jpeg({ quality: 92, mozjpeg: true })
+        .toBuffer();
+      metadata = await sharp(rotatedInput, { limitInputPixels: 40000000 }).metadata();
+    } catch (_) {
+      return new Response("El archivo de origen no contiene una imagen compatible", { status: 415 });
+    }
+    if (!metadata.width || !metadata.height) {
+      return new Response("Formato de imagen no compatible", { status: 415 });
+    }
 
-    // Descarga sin marca: devuelve bytes originales, conservando el formato y la extensión.
     if (download && !watermark) {
-      return new Response(input, {
+      return new Response(rotatedInput, {
         status: 200,
         headers: {
-          "Content-Type": originalContentType,
-          "Content-Disposition": `attachment; filename="fotografia-original.${originalExtension}"`,
-          "Cache-Control": "no-store",
+          "Content-Type": "image/jpeg",
+          "Content-Disposition": 'attachment; filename="fotografia.jpg"',
+          "Cache-Control": "no-store, no-cache, must-revalidate",
           "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "Content-Disposition, Content-Type",
           "X-Content-Type-Options": "nosniff"
         }
       });
-    }
-
-    if (!metadata.width || !metadata.height) {
-      return new Response("Formato de imagen no compatible", { status: 415 });
     }
 
     // Logo centrado: 70% del ancho de la imagen y 30% de opacidad.
@@ -158,18 +163,19 @@ export default async (request) => {
     const top = Math.max(0, Math.round((metadata.height - (logoMeta.height || 1)) / 2));
 
     const output = await encodeImageInOriginalFormat(
-      sharp(input, { animated: false, limitInputPixels: 40000000 })
+      sharp(rotatedInput, { animated: false, limitInputPixels: 40000000 })
         .composite([{ input: overlay, left, top }]),
-      originalFormat
+      "jpeg"
     ).toBuffer();
-    const outputType = contentTypeFromFormat(originalFormat, contentType);
-    const outputExtension = extensionFromFormat(originalFormat);
+    const outputType = "image/jpeg";
+    const outputExtension = "jpg";
 
     return new Response(output, {
       status: 200,
       headers: {
         "Content-Type": outputType,
-        ...(download ? { "Content-Disposition": `attachment; filename="fotografia-con-marca-de-agua.${outputExtension}"` } : {}),
+        ...(download ? { "Content-Disposition": 'attachment; filename="fotografia-con-marca-de-agua.jpg"' } : {}),
+        "Access-Control-Expose-Headers": "Content-Disposition, Content-Type",
         "Cache-Control": download ? "no-store" : "public, max-age=3600, s-maxage=86400",
         "Access-Control-Allow-Origin": "*",
         "X-Content-Type-Options": "nosniff"
